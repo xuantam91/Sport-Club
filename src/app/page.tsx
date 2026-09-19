@@ -292,10 +292,10 @@ export default function LeaderboardPage() {
       {/* SPORTS HERO BANNER */}
       <div className="relative overflow-hidden rounded-3xl border border-[#00BCEB]/30 shadow-2xl bg-slate-900 group">
         <div
-          className="absolute inset-0 bg-cover transition-transform duration-700 group-hover:scale-105"
-          style={{ backgroundImage: "url('/images/cisco_sports_hero.jpg')", backgroundPosition: "center 15%" }}
+          className="absolute inset-0 bg-cover transition-transform duration-700 group-hover:scale-105 bg-[80%_15%] sm:bg-[center_15%]"
+          style={{ backgroundImage: "url('/images/cisco_sports_hero.jpg')" }}
         ></div>
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0B0F17] via-[#0B0F17]/85 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0B0F17] via-[#0B0F17]/75 sm:via-[#0B0F17]/85 to-transparent"></div>
 
         <div className="relative z-10 p-4 sm:p-7 lg:p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5 sm:gap-6 lg:gap-8">
           <div className="space-y-3 max-w-2xl w-full">
@@ -311,8 +311,8 @@ export default function LeaderboardPage() {
                   KINETIC
                 </span>
               </h1>
-              <div className="pt-0.5">
-                <span className="inline-block bg-[#CCFF00] text-slate-950 font-black text-[11px] xs:text-xs sm:text-base italic px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-md shadow-md shadow-[#CCFF00]/25 tracking-tight leading-snug sm:whitespace-nowrap break-words max-w-full">
+              <div className="pt-0.5 max-w-full overflow-hidden">
+                <span className="inline-block text-[#CCFF00] sm:text-slate-950 bg-transparent sm:bg-[#CCFF00] font-bold sm:font-black text-xs sm:text-base italic px-0 sm:px-3 py-0 sm:py-1.5 rounded-none sm:rounded-md shadow-none sm:shadow-md sm:shadow-[#CCFF00]/25 tracking-tight leading-snug whitespace-nowrap truncate max-w-full">
                   &ldquo;{t('hero', 'slogan')}&rdquo;
                 </span>
               </div>
