@@ -37,6 +37,7 @@ interface AppContextType {
   setDemoMode: (val: boolean) => void;
   refreshData: () => Promise<void>;
   syncStravaActivities: (givenToken?: string, targetUser?: Profile | null) => Promise<void>;
+  logout: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -420,6 +421,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const baseUser = loadedUser || currentUser || DEMO_PROFILES[0];
         const updatedUser: Profile = {
           ...baseUser,
+          role: 'member', // Role mặc định khi link Strava là Vận động viên
           full_name: stravaName || baseUser.full_name,
           avatar_url: stravaAvatar || baseUser.avatar_url,
           username: stravaUsername || baseUser.username || (stravaName ? stravaName.toLowerCase().replace(/\s+/g, '.') : 'vanguard.runner'),
@@ -491,6 +493,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await syncStravaActivities();
   };
 
+  const logout = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('cisco_sport_user');
+      localStorage.removeItem('cisco_strava_token');
+    }
+    setCurrentUser(null);
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -524,6 +534,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setDemoMode,
         refreshData,
         syncStravaActivities,
+        logout,
       }}
     >
       {children}

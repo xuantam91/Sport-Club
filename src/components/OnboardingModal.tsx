@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Zap, Mail, Lock, User, Users, ArrowRight, Camera, Upload } from 'lucide-react';
+import { Zap, Mail, Lock, User, Users, ArrowRight, Camera, Upload, Eye, EyeOff } from 'lucide-react';
 
 export const OnboardingModal: React.FC = () => {
   const { currentUser, teams, completeOnboarding, showOnboardingModal, setShowOnboardingModal } = useApp();
@@ -12,7 +12,8 @@ export const OnboardingModal: React.FC = () => {
   const [email, setEmail] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState('Cisco2026$');
+  const [showPassword, setShowPassword] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState(currentUser?.team_id || (teams[0] ? teams[0].id : ''));
   const [emailNotifications, setEmailNotifications] = useState(true);
 
@@ -203,19 +204,27 @@ export const OnboardingModal: React.FC = () => {
 
           {/* Password (for password reset) */}
           <div>
-            <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Mật Khẩu (Để Reset & Đăng Nhập Web)</label>
+            <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Mật Khẩu Mặc Định (Đăng Nhập Web)</label>
             <div className="relative">
-              <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+              <Lock className="w-4 h-4 text-[#00BCEB] absolute left-3 top-3" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-[#00BCEB]"
+                placeholder="Cisco2026$"
+                className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-[#00BCEB]"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-2.5 text-slate-400 hover:text-white p-0.5 rounded transition-colors"
+                title={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4 text-[#CCFF00]" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">Sử dụng email & mật khẩu này để nhận thông báo giải đấu hoặc quên mật khẩu.</p>
+            <p className="text-[11px] text-slate-400 mt-1">Mật khẩu mặc định là <strong className="text-[#CCFF00]">Cisco2026$</strong>. Bạn có thể sửa thành mật khẩu riêng.</p>
           </div>
 
           {/* Team Selection */}
