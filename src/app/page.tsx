@@ -292,8 +292,8 @@ export default function LeaderboardPage() {
       {/* SPORTS HERO BANNER */}
       <div className="relative overflow-hidden rounded-2xl border border-[#00BCEB]/30 shadow-2xl bg-slate-900 group">
         <div
-          className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
-          style={{ backgroundImage: "url('/images/cisco_sports_hero.jpg')" }}
+          className="absolute inset-0 bg-cover transition-transform duration-700 group-hover:scale-105"
+          style={{ backgroundImage: "url('/images/cisco_sports_hero.jpg')", backgroundPosition: "center 15%" }}
         ></div>
         <div className="absolute inset-0 bg-gradient-to-r from-[#0B0F17] via-[#0B0F17]/85 to-transparent"></div>
 
