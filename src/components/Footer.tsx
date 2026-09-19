@@ -103,10 +103,15 @@ export const Footer: React.FC = () => {
 
         {/* Bottom Bar */}
         <div className="pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4 text-[11px] sm:text-xs text-slate-500 text-center sm:text-left">
-          <p>
-            <span className="sm:hidden">&copy; 2026 Cisco GSC Vietnam</span>
-            <span className="hidden sm:inline">{t('footer', 'copyright')}</span>
-          </p>
+          <div className="flex items-center justify-center sm:justify-start space-x-2">
+            <p>
+              <span className="sm:hidden">&copy; 2026 Cisco GSC Vietnam</span>
+              <span className="hidden sm:inline">{t('footer', 'copyright')}</span>
+            </p>
+            <span className="px-2 py-0.5 rounded-full bg-slate-900 border border-[#00BCEB]/30 text-[#00BCEB] font-mono text-[10px] font-bold shadow-xs">
+              v1.0
+            </span>
+          </div>
           <div className="flex items-center justify-center space-x-1 text-slate-400 font-medium">
             <span className="sm:hidden">Built with</span>
             <span className="hidden sm:inline">Powered for Cisco GSC Vietnam by</span>
