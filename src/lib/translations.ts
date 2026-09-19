@@ -14,9 +14,9 @@ export const translations = {
     tag: { vi: 'GSC VIETNAM • SPORTS & HEALTH 2026', en: 'GSC VIETNAM • HEALTH 2026', zh: 'GSC越南 • 2026体育健康挑战赛' },
     title: { vi: 'GSC VIETNAM', en: 'GSC VIETNAM', zh: 'GSC越南中心' },
     slogan: {
-      vi: 'Bứt Phá Giới Hạn - Kết Nối Sức Mạnh & Sức Khỏe Đồng Đội GSC Vietnam',
-      en: 'Break Boundaries - Powering Cisco GSC Vietnam Health & Team Connections',
-      zh: '突破极限 - 凝聚思科越南GSC团队健康与力量',
+      vi: 'Bứt Phá Giới Hạn • Kết Nối Sức Mạnh Đồng Đội GSC',
+      en: 'Break Boundaries • Powering GSC Health & Team',
+      zh: '突破极限 • 凝聚GSC健康与力量',
     },
     desc: {
       vi: 'Chương trình rèn luyện thể thao cán bộ nhân viên Cisco GSC Vietnam. Kết nối ứng dụng Strava, ghi nhận thành tích chạy bộ, đạp xe, đi bộ và vinh danh đội nhóm xuất sắc nhất!',

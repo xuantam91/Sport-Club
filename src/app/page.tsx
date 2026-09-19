@@ -268,7 +268,7 @@ export default function LeaderboardPage() {
                   KINETIC
                 </span>
               </h1>
-              <p className="text-base sm:text-lg font-bold text-[#CCFF00] italic">&ldquo;{t('hero', 'slogan')}&rdquo;</p>
+              <p className="text-sm sm:text-base font-bold text-[#CCFF00] italic sm:whitespace-nowrap truncate max-w-full">&ldquo;{t('hero', 'slogan')}&rdquo;</p>
             </div>
 
             <p className="text-slate-300 text-xs sm:text-sm leading-relaxed max-w-xl">{t('hero', 'desc')}</p>
