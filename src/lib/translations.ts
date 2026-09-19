@@ -20,8 +20,8 @@ export const translations = {
     },
     desc: {
       vi: 'Chương trình rèn luyện thể thao cán bộ nhân viên Cisco GSC Vietnam. Kết nối ứng dụng Strava, ghi nhận thành tích chạy bộ, đạp xe, đi bộ và vinh danh đội nhóm xuất sắc nhất!',
-      en: 'Cisco GSC Vietnam corporate fitness program. Sync with Strava, log running, cycling, walking activities and celebrate top performing teams!',
-      zh: '思科越南GSC企业员工健身计划。连接Strava应用，记录跑步、骑行、步行成绩，表彰优秀团队！',
+      en: 'Cisco GSC Vietnam team fitness program. Sync with Strava, log running, cycling, walking activities and celebrate top performing teams!',
+      zh: '思科越南GSC团队员工健身计划。连接Strava应用，记录跑步、骑行、步行成绩，表彰优秀团队！',
     },
     syncBtn: { vi: 'Đồng Bộ Strava Ngay', en: 'Sync Strava Now', zh: '立即同步Strava' },
     joinTeamBtn: { vi: 'Tham Gia Team GSC', en: 'Join GSC Team', zh: '加入GSC团队' },
@@ -117,7 +117,7 @@ export const translations = {
     saveBtn: { vi: 'Lưu Bài Tập & Tính Điểm', en: 'Save & Calculate Points', zh: '保存并计算积分' },
   },
   challenges: {
-    tag: { vi: 'CISCO CORPORATE RACES & CHALLENGES', en: 'CISCO RACES & CHALLENGES', zh: '思科赛事与挑战' },
+    tag: { vi: 'CISCO TEAM RACES & CHALLENGES', en: 'CISCO TEAM RACES & CHALLENGES', zh: '思科团队赛事与挑战' },
     title: { vi: 'GIẢI THẤU & THÁCH ĐẤU THỂ THAO', en: 'SPORTS RACES & TOURNAMENTS', zh: '体育赛事与挑战赛' },
     desc: {
       vi: 'Tham gia các giải đấu marathon, đạp xe đường dài và bứt phá mục tiêu cự ly!',
