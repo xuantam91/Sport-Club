@@ -66,6 +66,28 @@ export const DEMO_PROFILES: Profile[] = [
     team_id: 'team-1',
     team: DEMO_TEAMS[0],
     strava_id: 998811,
+    certificates: [
+      {
+        id: 'cert-1',
+        title: '🏆 TOP 1 VẬN ĐỘNG VIÊN XUẤT SẮC TUẦN 38',
+        type: 'weekly',
+        recipient_name: 'Nguyễn Văn Minh',
+        achievement_detail: 'Cự ly: 42.5 km • 45.2 pts quy đổi',
+        issue_date: '19/09/2026',
+        badge_color: 'from-amber-400 to-yellow-600',
+        verified_by: 'Ban Tổ Chức Cisco GSC Vietnam',
+      },
+      {
+        id: 'cert-2',
+        title: '🏅 FINISHER THÁCH ĐẤU BỨT PHÁ 100KM THÁNG 9',
+        type: 'monthly',
+        recipient_name: 'Nguyễn Văn Minh',
+        achievement_detail: 'Hoàn thành mốc 125 km Chạy bộ & Leo dốc',
+        issue_date: '15/09/2026',
+        badge_color: 'from-cyan-400 to-blue-600',
+        verified_by: 'Cisco Health & Sports Committee',
+      }
+    ],
     created_at: '2026-01-01',
   },
   {

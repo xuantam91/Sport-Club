@@ -26,7 +26,7 @@ interface AppContextType {
   updateMemberRole: (userId: string, role: UserRole) => void;
   assignMemberTeam: (userId: string, teamId: string) => void;
   randomTeamDraft: (memberIds: string[], targetTeamIds: string[]) => void;
-  completeOnboarding: (data: { username: string; email: string; teamId: string; emailNotifications: boolean }) => void;
+  completeOnboarding: (data: { fullName?: string; username: string; email: string; teamId: string; emailNotifications: boolean }) => void;
   showOnboardingModal: boolean;
   setShowOnboardingModal: (val: boolean) => void;
   isDemoMode: boolean;
@@ -205,14 +205,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   /**
+   * Tự động bắt callback từ Strava OAuth khi chuyển hướng về /profile
+   */
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('strava_connected') === '1') {
+        const stravaName = params.get('name');
+        const stravaAvatar = params.get('avatar');
+        const stravaUsername = params.get('username');
+        const stravaId = params.get('strava_id');
+
+        if (currentUser) {
+          const updatedUser: Profile = {
+            ...currentUser,
+            full_name: stravaName || currentUser.full_name,
+            avatar_url: stravaAvatar || currentUser.avatar_url,
+            username: stravaUsername || currentUser.username,
+            strava_id: stravaId ? Number(stravaId) : currentUser.strava_id,
+          };
+          setCurrentUser(updatedUser);
+          setProfiles((prev) => prev.map((p) => (p.id === currentUser.id ? updatedUser : p)));
+          setShowOnboardingModal(true);
+        }
+      }
+    }
+  }, []);
+
+  /**
    * Hoàn tất cấu hình tài khoản sau khi liên kết Strava (Onboarding)
    */
-  const completeOnboarding = (data: { username: string; email: string; teamId: string; emailNotifications: boolean }) => {
+  const completeOnboarding = (data: { fullName?: string; username: string; email: string; teamId: string; emailNotifications: boolean }) => {
     if (!currentUser) return;
 
     const targetTeam = teams.find((t) => t.id === data.teamId);
     const updatedProfile: Profile = {
       ...currentUser,
+      full_name: data.fullName || currentUser.full_name,
       username: data.username,
       email: data.email,
       team_id: data.teamId,

@@ -7,6 +7,7 @@ import { CheckCircle2, Zap, Shield, Mail, Lock, User, Users, ArrowRight, Sparkle
 export const OnboardingModal: React.FC = () => {
   const { currentUser, teams, completeOnboarding, showOnboardingModal, setShowOnboardingModal } = useApp();
 
+  const [fullName, setFullName] = useState(currentUser?.full_name || '');
   const [username, setUsername] = useState(currentUser?.username || currentUser?.full_name.toLowerCase().replace(/\s+/g, '.') || '');
   const [email, setEmail] = useState(currentUser?.email || '');
   const [password, setPassword] = useState('');
@@ -18,6 +19,7 @@ export const OnboardingModal: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     completeOnboarding({
+      fullName,
       username,
       email,
       teamId: selectedTeamId,
@@ -64,10 +66,26 @@ export const OnboardingModal: React.FC = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Tên Hiển Thị */}
+          <div>
+            <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Họ & Tên Hiển Thị (Display Name)</label>
+            <div className="relative">
+              <User className="w-4 h-4 text-[#00BCEB] absolute left-3 top-3" />
+              <input
+                type="text"
+                required
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Nguyễn Văn Minh"
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-[#00BCEB]"
+              />
+            </div>
+          </div>
+
           {/* Email & Username */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Tên Đăng Nhập (Username)</label>
+              <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Mã Username Strava</label>
               <div className="relative">
                 <User className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                 <input

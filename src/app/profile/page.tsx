@@ -1,12 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { User, Shield, Activity, CheckCircle2, Building, Mail, Lock, Settings } from 'lucide-react';
-import { getStravaOAuthUrl } from '@/lib/strava';
+import { User, Shield, Activity, CheckCircle2, Building, Mail, Settings } from 'lucide-react';
+import { Certificate } from '@/types';
 
 export default function ProfilePage() {
   const { currentUser, activities, setShowOnboardingModal, t } = useApp();
+  const [selectedCert, setSelectedCert] = useState<Certificate | null>(null);
 
   if (!currentUser) {
     return (
@@ -43,6 +44,8 @@ export default function ProfilePage() {
               <span className="px-3 py-1 rounded-full bg-[#CCFF00]/15 border border-[#CCFF00]/30 text-[#CCFF00] font-extrabold text-xs uppercase">
                 {currentUser.role === 'admin'
                   ? t('profile', 'adminRole')
+                  : currentUser.role === 'organizer'
+                  ? t('profile', 'organizerRole')
                   : currentUser.role === 'captain'
                   ? t('profile', 'captainRole')
                   : t('profile', 'memberRole')}
@@ -113,6 +116,45 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      {/* CHỨNG CHỈ & THÀNH TÍCH ĐIỆN TỬ (Certificates Section) */}
+      <div className="glass-panel p-6 rounded-3xl border border-slate-800 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-extrabold text-lg text-white flex items-center gap-2">
+            <Shield className="w-5 h-5 text-[#CCFF00]" />
+            <span>{t('profile', 'certTitle')} ({currentUser.certificates?.length || 0})</span>
+          </h2>
+          <span className="text-xs text-[#00BCEB] font-bold">Cấp bởi Ban Tổ Chức Cisco GSC</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {(currentUser.certificates || []).map((cert) => (
+            <div
+              key={cert.id}
+              onClick={() => setSelectedCert(cert)}
+              className="p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950 border border-amber-500/30 hover:border-amber-400/60 shadow-lg cursor-pointer transition-all duration-300 group btn-interactive"
+            >
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[10px] font-black uppercase">
+                    CHỨNG CHỈ THỂ THAO
+                  </span>
+                  <h3 className="font-bold text-base text-white group-hover:text-[#CCFF00] transition-colors">{cert.title}</h3>
+                  <p className="text-xs text-slate-400">{cert.achievement_detail}</p>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-400/40 flex items-center justify-center text-amber-400 text-lg font-black group-hover:scale-110 transition-transform">
+                  📜
+                </div>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+                <span>Ngày cấp: {cert.issue_date}</span>
+                <span className="text-[#00BCEB] font-semibold underline group-hover:text-[#CCFF00]">Xem Bằng Khen ➔</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Activity Timeline */}
       <div className="glass-panel p-6 rounded-3xl border border-slate-800 space-y-4">
         <h2 className="font-extrabold text-lg text-white flex items-center gap-2">
@@ -138,6 +180,55 @@ export default function ProfilePage() {
           ))}
         </div>
       </div>
+
+      {/* MODAL POPUP CHỨNG CHỈ VINH DANH (Digital Certificate Viewer) */}
+      {selectedCert && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-950 border-2 border-amber-500/60 rounded-3xl p-6 sm:p-8 max-w-xl w-full space-y-6 shadow-2xl relative overflow-hidden text-center">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            {/* Header Badge */}
+            <div className="space-y-2">
+              <span className="px-4 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-black uppercase tracking-widest">
+                CISCO GSC VIETNAM ATHLETIC CERTIFICATE
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 uppercase tracking-wide">
+                BẰNG KHEN THÀNH TÍCH
+              </h2>
+            </div>
+
+            {/* Certificate Body */}
+            <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-4">
+              <p className="text-xs uppercase text-slate-400 font-bold tracking-wider">Chứng nhận Vận động viên</p>
+              <h3 className="text-2xl font-black text-white">{selectedCert.recipient_name}</h3>
+              <p className="text-sm font-semibold text-[#CCFF00]">{selectedCert.title}</p>
+              <div className="py-3 px-4 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300">
+                {selectedCert.achievement_detail}
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800">
+                <span>Ngày cấp: {selectedCert.issue_date}</span>
+                <span className="text-[#00BCEB] font-bold">{selectedCert.verified_by}</span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-center space-x-3 pt-2">
+              <button
+                onClick={() => setSelectedCert(null)}
+                className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs"
+              >
+                Đóng
+              </button>
+              <button
+                onClick={() => alert('Đã lưu Bằng Khen Thể Thao thành công!')}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-amber-500/20 hover:opacity-95 transition-all"
+              >
+                Tải Bằng Khen (PDF HD)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

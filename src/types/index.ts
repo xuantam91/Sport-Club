@@ -2,7 +2,18 @@ export type SportType = 'Run' | 'Ride' | 'Walk' | 'Hike' | 'Swim' | 'All';
 
 export type TimeFilter = 'week' | 'month' | 'quarter' | 'year' | 'all';
 
-export type UserRole = 'admin' | 'captain' | 'member';
+export type UserRole = 'admin' | 'organizer' | 'captain' | 'member';
+
+export interface Certificate {
+  id: string;
+  title: string;
+  type: 'weekly' | 'monthly' | 'challenge';
+  recipient_name: string;
+  achievement_detail: string;
+  issue_date: string;
+  badge_color: string;
+  verified_by: string;
+}
 
 export interface SportRule {
   id: string;
@@ -45,6 +56,7 @@ export interface Profile {
   strava_expires_at?: number;
   email_notifications?: boolean;
   password_set?: boolean;
+  certificates?: Certificate[];
   created_at: string;
 }
 

@@ -233,9 +233,10 @@ export default function AdminPage() {
                         onChange={(e) => updateMemberRole(p.id, e.target.value as UserRole)}
                         className="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200 focus:outline-none focus:border-[#00BCEB]"
                       >
-                        <option value="member">🏃 Thành viên (Member)</option>
-                        <option value="captain">👑 Đội Trưởng (Captain)</option>
-                        <option value="admin">⚡ Admin BQT</option>
+                        <option value="member">🏃 Vận Động Viên (Default)</option>
+                        <option value="captain">👑 Trưởng Nhóm (Leader)</option>
+                        <option value="organizer">🎪 Ban Tổ Chức (BTC)</option>
+                        <option value="admin">⚡ Quản Trị Viên (Admin)</option>
                       </select>
                     </td>
 

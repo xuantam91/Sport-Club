@@ -142,8 +142,9 @@ export const translations = {
   },
   profile: {
     title: { vi: 'TRANG CÁ NHÂN & THÀNH TÍCH', en: 'PROFILE & ATHLETIC STATS', zh: '个人主页与战绩' },
-    adminRole: { vi: '⚡ Quản trị Admin', en: '⚡ Admin BQT', zh: '⚡ 系统管理员' },
-    captainRole: { vi: '👑 Đội Trưởng', en: '👑 Team Captain', zh: '👑 团队队长' },
+    adminRole: { vi: '⚡ Quản trị Admin', en: '⚡ System Admin', zh: '⚡ 系统管理员' },
+    organizerRole: { vi: '🎪 Ban Tổ Chức (BTC)', en: '🎪 Event Committee (BTC)', zh: '🎪 赛事组委会' },
+    captainRole: { vi: '👑 Trưởng Nhóm (Leader)', en: '👑 Team Leader', zh: '👑 团队队长' },
     memberRole: { vi: '🏃 Vận Động Viên', en: '🏃 Athlete', zh: '🏃 运动员' },
     stravaConnected: { vi: 'Đã kết nối Strava', en: 'Strava Connected', zh: 'Strava已连接' },
     updateOAuth: { vi: 'Cập nhật OAuth', en: 'Update OAuth', zh: '更新OAuth' },
@@ -152,6 +153,7 @@ export const translations = {
     totalElevation: { vi: 'Tổng leo dốc', en: 'Total Elevation', zh: '总爬升' },
     totalWorkouts: { vi: 'Tổng số bài tập', en: 'Total Workouts', zh: '总运动次数' },
     historyTitle: { vi: 'Lịch Sử Bài Tập Của Tôi', en: 'My Workout History', zh: '我的运动历史' },
+    certTitle: { vi: 'Chứng Chỉ & Thành Tích Vinh Danh', en: 'Certificates & Achievements', zh: '荣誉证书与成就' },
   },
   admin: {
     tag: { vi: 'CISCO ADMIN CONTROL CENTER', en: 'CISCO ADMIN CONTROL CENTER', zh: '思科管理员控制中心' },
