@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { User, Shield, Activity, CheckCircle2, Building, Mail, Settings, RefreshCw, Zap, Bug, ChevronRight, Eye, ListFilter } from 'lucide-react';
+import { User, Shield, Activity, CheckCircle2, Building, Mail, Settings, RefreshCw, Zap, Bug, ChevronRight, Eye, ListFilter, Calendar, Clock, PieChart, BarChart2 } from 'lucide-react';
 import { Certificate, Activity as ActivityType } from '@/types';
 
 export default function ProfilePage() {
@@ -11,6 +11,12 @@ export default function ProfilePage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [debugOutput, setDebugOutput] = useState<string | null>(null);
   
+  // State Bộ Lọc Thời Gian
+  type TimeFilterType = 'all' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
+  const [timeFilter, setTimeFilter] = useState<TimeFilterType>('all');
+  const [customStart, setCustomStart] = useState<string>('');
+  const [customEnd, setCustomEnd] = useState<string>('');
+
   // State quản lý xem chi tiết môn thể thao
   const [activeCategoryModal, setActiveCategoryModal] = useState<{
     type: string;
@@ -22,7 +28,7 @@ export default function ProfilePage() {
     return (
       <div className="max-w-md mx-auto my-20 p-8 glass-panel text-center rounded-3xl space-y-4">
         <User className="w-12 h-12 text-slate-500 mx-auto" />
-        <h2 className="text-xl font-bold text-white">Chưa chọn thành viên</h2>
+        <h2 className="text-xl font-bold text-[#FFFFFF]">Chưa chọn thành viên</h2>
         <p className="text-sm text-slate-400">Vui lòng đăng nhập hoặc chọn hồ sơ cá nhân.</p>
       </div>
     );
@@ -49,7 +55,7 @@ export default function ProfilePage() {
     }
   };
 
-  const userActivities = activities.filter(
+  const rawUserActivities = activities.filter(
     (a) =>
       (a.profile_id === currentUser.id ||
         a.profile?.id === currentUser.id ||
@@ -57,24 +63,79 @@ export default function ProfilePage() {
       !a.id.startsWith('act-')
   );
 
+  // Lọc bài tập theo mốc thời gian đã chọn
+  const userActivities = rawUserActivities.filter((a) => {
+    if (timeFilter === 'all') return true;
+    const actDate = new Date(a.start_date);
+    const now = new Date();
+
+    if (timeFilter === 'week') {
+      const startOfWeek = new Date(now);
+      const day = startOfWeek.getDay();
+      const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); // Thứ Hai
+      startOfWeek.setDate(diff);
+      startOfWeek.setHours(0, 0, 0, 0);
+      return actDate >= startOfWeek;
+    }
+
+    if (timeFilter === 'month') {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      return actDate >= startOfMonth;
+    }
+
+    if (timeFilter === 'quarter') {
+      const currentQuarter = Math.floor(now.getMonth() / 3);
+      const startOfQuarter = new Date(now.getFullYear(), currentQuarter * 3, 1);
+      return actDate >= startOfQuarter;
+    }
+
+    if (timeFilter === 'year') {
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      return actDate >= startOfYear;
+    }
+
+    if (timeFilter === 'custom') {
+      if (customStart && actDate < new Date(customStart)) return false;
+      if (customEnd) {
+        const endDate = new Date(customEnd);
+        endDate.setHours(23, 59, 59, 999);
+        if (actDate > endDate) return false;
+      }
+      return true;
+    }
+
+    return true;
+  });
+
   const totalDistMeters = userActivities.reduce((acc, a) => acc + a.distance, 0);
   const totalPoints = userActivities.reduce((acc, a) => acc + a.calculated_points, 0);
   const totalElevation = userActivities.reduce((acc, a) => acc + (a.total_elevation_gain || 0), 0);
+  const totalMovingTimeSec = userActivities.reduce((acc, a) => acc + (a.moving_time || a.elapsed_time || 0), 0);
 
-  // Phân loại hoạt động theo từng chủng loại môn thể thao
+  const formatDuration = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    if (hrs > 0) return `${hrs}h ${mins}m`;
+    return `${mins}m`;
+  };
+
+  // Phân loại hoạt động theo từng chủng loại môn thể thao & phân bổ thời gian
   const sportCategories = [
-    { type: 'Run', name: '🏃 Chạy Bộ (Run)', color: 'from-[#FC4C02]/20 to-[#ff6a26]/5', border: 'border-[#FC4C02]/40', badge: 'text-[#FC4C02]' },
-    { type: 'Ride', name: '🚴 Đạp Xe (Ride)', color: 'from-[#00BCEB]/20 to-[#00f0ff]/5', border: 'border-[#00BCEB]/40', badge: 'text-[#00BCEB]' },
-    { type: 'Walk', name: '🚶 Đi Bộ (Walk)', color: 'from-[#CCFF00]/20 to-[#b8e600]/5', border: 'border-[#CCFF00]/40', badge: 'text-[#CCFF00]' },
-    { type: 'Swim', name: '🏊 Bơi Lội (Swim)', color: 'from-blue-500/20 to-cyan-600/5', border: 'border-blue-500/40', badge: 'text-blue-400' },
-    { type: 'Hike', name: '🥾 Leo Núi (Hike)', color: 'from-emerald-500/20 to-teal-600/5', border: 'border-emerald-500/40', badge: 'text-emerald-400' },
+    { type: 'Run', name: '🏃 Chạy Bộ (Run)', color: 'from-[#FC4C02]/20 to-[#ff6a26]/5', border: 'border-[#FC4C02]/40', badge: 'text-[#FC4C02]', barColor: 'bg-[#FC4C02]' },
+    { type: 'Ride', name: '🚴 Đạp Xe (Ride)', color: 'from-[#00BCEB]/20 to-[#00f0ff]/5', border: 'border-[#00BCEB]/40', badge: 'text-[#00BCEB]', barColor: 'bg-[#00BCEB]' },
+    { type: 'Walk', name: '🚶 Đi Bộ (Walk)', color: 'from-[#CCFF00]/20 to-[#b8e600]/5', border: 'border-[#CCFF00]/40', badge: 'text-[#CCFF00]', barColor: 'bg-[#CCFF00]' },
+    { type: 'Swim', name: '🏊 Bơi Lội (Swim)', color: 'from-blue-500/20 to-cyan-600/5', border: 'border-blue-500/40', badge: 'text-blue-400', barColor: 'bg-blue-500' },
+    { type: 'Hike', name: '🥾 Leo Núi (Hike)', color: 'from-emerald-500/20 to-teal-600/5', border: 'border-emerald-500/40', badge: 'text-emerald-400', barColor: 'bg-emerald-500' },
   ];
 
   const groupedStats = sportCategories.map((cat) => {
     const list = userActivities.filter((a) => a.type === cat.type);
     const distMeters = list.reduce((sum, a) => sum + a.distance, 0);
     const points = list.reduce((sum, a) => sum + a.calculated_points, 0);
+    const timeSec = list.reduce((sum, a) => sum + (a.moving_time || a.elapsed_time || 0), 0);
+    const elevGain = list.reduce((sum, a) => sum + (a.total_elevation_gain || 0), 0);
     const count = list.length;
+    const timePercent = totalMovingTimeSec > 0 ? (timeSec / totalMovingTimeSec) * 100 : 0;
 
     return {
       ...cat,
@@ -82,6 +143,9 @@ export default function ProfilePage() {
       count,
       km: (distMeters / 1000).toFixed(1),
       points: points.toFixed(1),
+      timeSec,
+      elevGain: Math.round(elevGain),
+      timePercent,
     };
   });
 
@@ -159,6 +223,85 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      {/* BỘ LỌC THỜI GIAN (Time Range Filter Bar) */}
+      <div className="glass-panel p-4 sm:p-5 rounded-3xl border border-slate-800 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center space-x-2">
+            <Calendar className="w-5 h-5 text-[#00BCEB]" />
+            <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">Bộ Lọc Thời Gian Thống Kê</h3>
+          </div>
+
+          <span className="text-xs text-slate-400 font-medium">
+            {timeFilter === 'all' && 'Hiển thị tất cả lịch sử tập luyện'}
+            {timeFilter === 'week' && 'Thời gian: Tuần này'}
+            {timeFilter === 'month' && 'Thời gian: Tháng này'}
+            {timeFilter === 'quarter' && 'Thời gian: Quý này'}
+            {timeFilter === 'year' && 'Thời gian: Năm 2026'}
+            {timeFilter === 'custom' && 'Thời gian: Khoảng tùy chọn'}
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          {[
+            { id: 'all', label: '🌐 Tất Cả' },
+            { id: 'week', label: '📅 Tuần Này' },
+            { id: 'month', label: '📆 Tháng Này' },
+            { id: 'quarter', label: '📊 Quý Này' },
+            { id: 'year', label: '🏆 Năm 2026' },
+            { id: 'custom', label: '🗓️ Tùy Chỉnh...' },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setTimeFilter(item.id as TimeFilterType)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all btn-interactive ${
+                timeFilter === item.id
+                  ? 'bg-[#00BCEB] text-slate-950 font-black shadow-lg shadow-[#00BCEB]/20 scale-105'
+                  : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Custom Date Pickers */}
+        {timeFilter === 'custom' && (
+          <div className="flex flex-wrap items-center gap-3 pt-2 bg-slate-950/80 p-3 rounded-2xl border border-slate-800">
+            <div className="flex items-center space-x-2 text-xs text-slate-300">
+              <span>Từ ngày:</span>
+              <input
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                className="bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-[#00BCEB]"
+              />
+            </div>
+
+            <div className="flex items-center space-x-2 text-xs text-slate-300">
+              <span>Đến ngày:</span>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className="bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-[#00BCEB]"
+              />
+            </div>
+
+            {(customStart || customEnd) && (
+              <button
+                onClick={() => {
+                  setCustomStart('');
+                  setCustomEnd('');
+                }}
+                className="text-xs text-slate-400 hover:text-white underline"
+              >
+                Xóa mốc ngày
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Personal Stats Metrics */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="glass-card p-5 rounded-2xl border border-slate-800 text-center">
@@ -171,11 +314,103 @@ export default function ProfilePage() {
         </div>
         <div className="glass-card p-5 rounded-2xl border border-slate-800 text-center">
           <p className="text-xs text-slate-400 font-medium">{t('profile', 'totalElevation')}</p>
-          <p className="text-2xl font-extrabold text-[#00BCEB] mt-1">{totalElevation} <span className="text-xs font-normal text-slate-400">m</span></p>
+          <p className="text-2xl font-extrabold text-[#00BCEB] mt-1">{Math.round(totalElevation).toLocaleString('vi-VN')} <span className="text-xs font-normal text-slate-400">m</span></p>
         </div>
         <div className="glass-card p-5 rounded-2xl border border-slate-800 text-center">
           <p className="text-xs text-slate-400 font-medium">{t('profile', 'totalWorkouts')}</p>
           <p className="text-2xl font-extrabold text-emerald-400 mt-1">{userActivities.length} <span className="text-xs font-normal text-slate-400">lần</span></p>
+        </div>
+      </div>
+
+      {/* BIỂU ĐỒ PHÂN BỐ THỜI GIAN THEO MÔN THỂ THAO */}
+      <div className="glass-panel p-6 rounded-3xl border border-slate-800 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+          <div className="space-y-1">
+            <div className="flex items-center space-x-2">
+              <PieChart className="w-5 h-5 text-[#CCFF00]" />
+              <h2 className="text-lg font-extrabold text-white">Biểu Đồ Phân Bổ Thời Gian Theo Môn</h2>
+            </div>
+            <p className="text-xs text-slate-400">Tỷ lệ thời gian vận động (Moving Time) phân bổ theo từng bộ môn thể thao</p>
+          </div>
+
+          <div className="px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center space-x-2 text-xs">
+            <Clock className="w-4 h-4 text-[#00BCEB]" />
+            <span className="text-slate-400">Tổng thời gian:</span>
+            <strong className="text-[#CCFF00] font-bold">{formatDuration(totalMovingTimeSec)}</strong>
+          </div>
+        </div>
+
+        {/* Multi-Segment Stacked Bar Chart */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs text-slate-400 font-medium">
+            <span>Tỷ lệ phân bổ tổng thể (100%)</span>
+            <span>{userActivities.length} bài tập</span>
+          </div>
+
+          <div className="h-6 w-full bg-slate-950 rounded-2xl overflow-hidden p-1 flex border border-slate-800 shadow-inner">
+            {groupedStats.map((cat) => {
+              if (cat.timePercent <= 0) return null;
+              return (
+                <div
+                  key={cat.type}
+                  style={{ width: `${cat.timePercent}%` }}
+                  className={`h-full ${cat.barColor} transition-all duration-500 first:rounded-l-xl last:rounded-r-xl relative group cursor-pointer`}
+                  title={`${cat.name}: ${cat.timePercent.toFixed(1)}% (${formatDuration(cat.timeSec)})`}
+                >
+                  {cat.timePercent > 8 && (
+                    <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-slate-950 truncate px-1">
+                      {cat.timePercent.toFixed(0)}%
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+            {totalMovingTimeSec === 0 && (
+              <div className="h-full w-full bg-slate-900 flex items-center justify-center text-[10px] text-slate-500 font-bold">
+                Chưa có dữ liệu thời gian trong khoảng chọn
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Sport Breakdown Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+          {groupedStats.map((cat) => (
+            <div
+              key={cat.type}
+              className={`p-4 rounded-2xl bg-slate-900/80 border ${cat.count > 0 ? cat.border : 'border-slate-800/50 opacity-60'} space-y-3 transition-all hover:bg-slate-900`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-sm text-white">{cat.name}</span>
+                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black bg-slate-950 border border-slate-800 ${cat.badge}`}>
+                  {cat.timePercent.toFixed(1)}%
+                </span>
+              </div>
+
+              {/* Progress bar per sport */}
+              <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                <div
+                  className={`h-full ${cat.barColor} rounded-full transition-all duration-500`}
+                  style={{ width: `${cat.timePercent}%` }}
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-1 text-center pt-1 border-t border-slate-800/60 text-[11px]">
+                <div>
+                  <span className="text-[10px] text-slate-500 block">Thời gian</span>
+                  <strong className="text-white font-bold">{formatDuration(cat.timeSec)}</strong>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 block">Quãng đường</span>
+                  <strong className="text-[#CCFF00] font-bold">{cat.km} km</strong>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 block">Leo dốc</span>
+                  <strong className="text-[#00BCEB] font-bold">{cat.elevGain} m</strong>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

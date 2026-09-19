@@ -6,6 +6,34 @@ import { TimeFilter, SportType, IndividualLeaderboardEntry, TeamLeaderboardEntry
 import { Trophy, Flame, Crown, Medal, Zap, TrendingUp, Users, Sparkles, HeartPulse } from 'lucide-react';
 import Link from 'next/link';
 
+function isActivityInTimeFilter(dateStr: string, filter: TimeFilter): boolean {
+  if (filter === 'all') return true;
+  const actDate = new Date(dateStr);
+  const now = new Date();
+
+  if (filter === 'week') {
+    const startOfWeek = new Date(now);
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); // Monday
+    startOfWeek.setDate(diff);
+    startOfWeek.setHours(0, 0, 0, 0);
+    return actDate >= startOfWeek;
+  }
+
+  if (filter === 'month') {
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    return actDate >= startOfMonth;
+  }
+
+  if (filter === 'quarter') {
+    const currentQuarter = Math.floor(now.getMonth() / 3);
+    const startOfQuarter = new Date(now.getFullYear(), currentQuarter * 3, 1);
+    return actDate >= startOfQuarter;
+  }
+
+  return true;
+}
+
 export default function LeaderboardPage() {
   const { profiles, teams, activities, currentUser, t } = useApp();
 
@@ -16,6 +44,7 @@ export default function LeaderboardPage() {
   const individualLeaderboard = useMemo<IndividualLeaderboardEntry[]>(() => {
     const filteredActivities = activities.filter((act) => {
       if (sportFilter !== 'All' && act.type.toLowerCase() !== sportFilter.toLowerCase()) return false;
+      if (!isActivityInTimeFilter(act.start_date, timeFilter)) return false;
       return true;
     });
 
@@ -57,7 +86,7 @@ export default function LeaderboardPage() {
         profile,
         total_distance: stat.totalDistance,
         total_points: Math.round(stat.totalPoints * 100) / 100,
-        total_elevation: stat.totalElevation,
+        total_elevation: Math.round(stat.totalElevation),
         total_moving_time: stat.totalTime,
         activity_count: stat.count,
       };
@@ -73,7 +102,10 @@ export default function LeaderboardPage() {
       const teamProfileIds = new Set(teamProfiles.map((p) => p.id));
 
       const teamActivities = activities.filter(
-        (act) => teamProfileIds.has(act.profile_id) && (sportFilter === 'All' || act.type.toLowerCase() === sportFilter.toLowerCase())
+        (act) =>
+          teamProfileIds.has(act.profile_id) &&
+          (sportFilter === 'All' || act.type.toLowerCase() === sportFilter.toLowerCase()) &&
+          isActivityInTimeFilter(act.start_date, timeFilter)
       );
 
       const totalDist = teamActivities.reduce((acc, a) => acc + a.distance, 0);
@@ -86,7 +118,7 @@ export default function LeaderboardPage() {
         team,
         total_distance: totalDist,
         total_points: Math.round(totalPts * 100) / 100,
-        total_elevation: totalElev,
+        total_elevation: Math.round(totalElev),
         member_count: memberCount,
         avg_points_per_member: Math.round((totalPts / memberCount) * 100) / 100,
         activity_count: teamActivities.length,
@@ -98,15 +130,21 @@ export default function LeaderboardPage() {
   }, [teams, profiles, activities, sportFilter, timeFilter]);
 
   const totalStats = useMemo(() => {
-    const distMeters = activities.reduce((acc, a) => acc + a.distance, 0);
-    const pts = activities.reduce((acc, a) => acc + a.calculated_points, 0);
+    const filtered = activities.filter((act) => {
+      if (sportFilter !== 'All' && act.type.toLowerCase() !== sportFilter.toLowerCase()) return false;
+      if (!isActivityInTimeFilter(act.start_date, timeFilter)) return false;
+      return true;
+    });
+
+    const distMeters = filtered.reduce((acc, a) => acc + a.distance, 0);
+    const pts = filtered.reduce((acc, a) => acc + a.calculated_points, 0);
     return {
       km: (distMeters / 1000).toFixed(1),
       points: pts.toFixed(1),
       athletes: profiles.length,
-      activitiesCount: activities.length,
+      activitiesCount: filtered.length,
     };
-  }, [activities, profiles]);
+  }, [activities, profiles, sportFilter, timeFilter]);
 
   const top3Individual = individualLeaderboard.slice(0, 3);
   const top3Team = teamLeaderboard.slice(0, 3);
@@ -394,7 +432,7 @@ export default function LeaderboardPage() {
                   </div>
                   <div>
                     <p className="text-amber-200/70 font-medium">{t('podium', 'elevation')}</p>
-                    <p className="font-bold text-amber-300">{top3Individual[0].total_elevation}m</p>
+                    <p className="font-bold text-amber-300">{Math.round(top3Individual[0].total_elevation).toLocaleString('vi-VN')} m</p>
                   </div>
                 </div>
               </div>
@@ -554,7 +592,7 @@ export default function LeaderboardPage() {
                         {(entry.total_distance / 1000).toFixed(1)} <span className="text-xs text-slate-400 font-normal">km</span>
                       </td>
                       <td className="py-4 px-4 text-right text-slate-300">
-                        {entry.total_elevation} <span className="text-xs text-slate-500">m</span>
+                        {Math.round(entry.total_elevation).toLocaleString('vi-VN')} <span className="text-xs text-slate-500">m</span>
                       </td>
                       <td className="py-4 px-4 text-right">
                         <span className="font-extrabold text-base text-[#CCFF00]">{entry.total_points}</span>
