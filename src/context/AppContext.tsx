@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Profile, Team, Activity, SportRule, Challenge, UserRole } from '@/types';
 import { DEFAULT_SPORT_RULES, DEMO_ACTIVITIES, DEMO_PROFILES, DEMO_TEAMS, DEMO_CHALLENGES } from '@/lib/demoData';
-import { calculatePoints, fetchStravaActivities } from '@/lib/strava';
+import { calculatePoints } from '@/lib/strava';
 import { Language, translations } from '@/lib/translations';
 
 interface AppContextType {
@@ -32,7 +32,7 @@ interface AppContextType {
   isDemoMode: boolean;
   setDemoMode: (val: boolean) => void;
   refreshData: () => Promise<void>;
-  syncStravaActivities: () => Promise<void>;
+  syncStravaActivities: (givenToken?: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -211,38 +211,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  const syncStravaActivities = async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('cisco_strava_token') : null;
+  const syncStravaActivities = async (givenToken?: string) => {
+    const token = givenToken || (typeof window !== 'undefined' ? localStorage.getItem('cisco_strava_token') : null);
     if (!token || !currentUser) return;
+
     try {
-      const fetched = await fetchStravaActivities(token);
-      if (Array.isArray(fetched) && fetched.length > 0) {
-        const newActs: Activity[] = fetched.map((act: any) => ({
-          id: `strava-${act.id}`,
+      const res = await fetch(`/api/strava/user-activities?token=${encodeURIComponent(token)}`);
+      const data = await res.json();
+
+      if (data.success && Array.isArray(data.activities) && data.activities.length > 0) {
+        const newActs: Activity[] = data.activities.map((act: any) => ({
+          ...act,
           profile_id: currentUser.id,
           profile: currentUser,
-          strava_activity_id: act.id,
-          name: act.name || 'Bài tập Strava',
-          type: act.type === 'Run' ? 'Run' : act.type === 'Ride' ? 'Ride' : act.type === 'Walk' ? 'Walk' : 'Run',
-          distance: act.distance || 0,
-          moving_time: act.moving_time || 0,
-          elapsed_time: act.elapsed_time || 0,
-          total_elevation_gain: act.total_elevation_gain || 0,
-          calculated_points: calculatePoints(
-            act.type === 'Run' ? 'Run' : act.type === 'Ride' ? 'Ride' : act.type === 'Walk' ? 'Walk' : 'Run',
-            act.distance || 0,
-            act.total_elevation_gain || 0,
-            rules
-          ),
-          start_date: act.start_date || new Date().toISOString(),
-          created_at: act.start_date || new Date().toISOString(),
         }));
 
         setActivities((prev) => {
-          const existingIds = new Set(prev.map((a) => a.strava_activity_id || a.id));
-          const filteredNew = newActs.filter((a) => !existingIds.has(a.strava_activity_id));
-          const merged = [...filteredNew, ...prev];
-          localStorage.setItem('cisco_sport_activities', JSON.stringify(merged));
+          const existingIds = new Set(prev.map((a) => String(a.strava_activity_id || a.id)));
+          const filteredNew = newActs.filter((a) => !existingIds.has(String(a.strava_activity_id || a.id)));
+          const merged = [...filteredNew, ...prev.filter((a) => a.id !== 'act-1')];
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('cisco_sport_activities', JSON.stringify(merged));
+          }
           return merged;
         });
       }
@@ -321,42 +311,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return updated;
         });
 
-        // Parse & import Strava activities if passed in URL
-        const rawActivitiesStr = params.get('strava_activities');
-        if (rawActivitiesStr) {
-          try {
-            const rawActs = JSON.parse(decodeURIComponent(rawActivitiesStr));
-            if (Array.isArray(rawActs) && rawActs.length > 0) {
-              const formattedActs: Activity[] = rawActs.map((act: any) => ({
-                id: act.id,
-                profile_id: updatedUser.id,
-                profile: updatedUser,
-                strava_activity_id: act.strava_activity_id,
-                name: act.name,
-                type: act.type,
-                distance: act.distance,
-                moving_time: act.moving_time,
-                elapsed_time: act.elapsed_time,
-                total_elevation_gain: act.total_elevation_gain,
-                calculated_points: calculatePoints(act.type, act.distance, act.total_elevation_gain, rules),
-                start_date: act.start_date,
-                created_at: act.created_at,
-              }));
-
-              setActivities((prev) => {
-                const existingIds = new Set(prev.map((a) => a.strava_activity_id || a.id));
-                const filteredNew = formattedActs.filter((a) => !existingIds.has(a.strava_activity_id));
-                const merged = [...filteredNew, ...prev];
-                localStorage.setItem('cisco_sport_activities', JSON.stringify(merged));
-                return merged;
-              });
-            }
-          } catch (err) {
-            console.error('Error parsing strava_activities param:', err);
-          }
+        if (stravaToken) {
+          syncStravaActivities(stravaToken);
         }
 
         setShowOnboardingModal(true);
+      } else {
+        const existingToken = localStorage.getItem('cisco_strava_token');
+        if (existingToken) {
+          syncStravaActivities(existingToken);
+        }
       }
     }
   }, []);
