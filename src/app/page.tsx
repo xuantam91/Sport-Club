@@ -678,9 +678,6 @@ export default function LeaderboardPage() {
                   return (
                     <tr
                       key={entry.profile.id}
-                      onMouseEnter={(e) => {
-                        if (entry.rank <= 3) triggerRankConfetti(entry.rank, e);
-                      }}
                       className={`hover:bg-slate-800/40 transition-colors ${
                         isCurrentUser ? 'bg-[#00BCEB]/10 border-l-4 border-l-[#00BCEB]' : ''
                       }`}
@@ -758,9 +755,6 @@ export default function LeaderboardPage() {
                 {teamLeaderboard.map((entry) => (
                   <tr
                     key={entry.team.id}
-                    onMouseEnter={(e) => {
-                      if (entry.rank <= 3) triggerRankConfetti(entry.rank, e);
-                    }}
                     className="hover:bg-slate-800/40 transition-colors"
                   >
                     <td className="py-4 px-4 text-center font-bold text-slate-400">#{entry.rank}</td>

@@ -187,6 +187,10 @@ export const translations = {
     },
     quickLinks: { vi: 'Liên Kết Nhanh', en: 'Quick Links', zh: '快速链接' },
     featuresTitle: { vi: 'Tính Năng Nổi Bật', en: 'Key Features', zh: '核心功能' },
+    featStrava: { vi: 'Tự động đồng bộ Strava API', en: 'Auto Strava API Live Sync', zh: 'Strava API 自动实时同步' },
+    featLeaderboard: { vi: 'Bảng xếp hạng Tuần / Tháng / Quý', en: 'Weekly / Monthly / Quarterly Leaderboard', zh: '周 / 月 / 季度排行榜' },
+    featRandomDraft: { vi: 'Bốc thăm chia đội online', en: 'Online Random Team Draft', zh: '在线随机分组抽签' },
+    featFlexiblePoints: { vi: 'Quy đổi điểm số linh hoạt', en: 'Flexible Point Conversion Rules', zh: '灵活积分换算规则' },
     support: { vi: 'Hỗ Trợ & Strava API', en: 'Support & Strava API', zh: '支持与Strava API' },
     copyright: {
       vi: '© 2026 Cisco GSC Vietnam. All rights reserved. Cisco Kinetic Sports Hub.',

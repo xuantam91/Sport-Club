@@ -69,19 +69,19 @@ export const Footer: React.FC = () => {
             <ul className="space-y-2 text-xs">
               <li className="flex items-center gap-2 text-slate-300">
                 <Zap className="w-3.5 h-3.5 text-[#FC4C02] flex-shrink-0" />
-                <span>Tự động đồng bộ Strava API</span>
+                <span>{t('footer', 'featStrava')}</span>
               </li>
               <li className="flex items-center gap-2 text-slate-300">
                 <Trophy className="w-3.5 h-3.5 text-[#CCFF00] flex-shrink-0" />
-                <span>Bảng xếp hạng Tuần / Tháng / Quý</span>
+                <span>{t('footer', 'featLeaderboard')}</span>
               </li>
               <li className="flex items-center gap-2 text-slate-300">
                 <Dices className="w-3.5 h-3.5 text-[#00BCEB] flex-shrink-0" />
-                <span>Bốc thăm chia đội online</span>
+                <span>{t('footer', 'featRandomDraft')}</span>
               </li>
               <li className="flex items-center gap-2 text-slate-300">
                 <Sliders className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-                <span>Quy đổi điểm số linh hoạt</span>
+                <span>{t('footer', 'featFlexiblePoints')}</span>
               </li>
             </ul>
           </div>
