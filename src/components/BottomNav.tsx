@@ -14,7 +14,7 @@ export const BottomNav: React.FC = () => {
     { href: '/', label: 'Xếp Hạng', icon: Trophy },
     { href: '/challenges', label: 'Giải Đấu', icon: Flame },
     { href: '/teams', label: 'Teams', icon: Users },
-    { href: '/activities', label: 'Bài Tập', icon: Activity },
+    { href: '/activities', label: 'Hoạt Động', icon: Activity },
     { href: '/profile', label: 'Cá Nhân', icon: User },
     ...(currentUser?.role === 'admin' ? [{ href: '/admin', label: 'Admin', icon: ShieldCheck }] : []),
   ];
