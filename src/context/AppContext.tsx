@@ -32,7 +32,7 @@ interface AppContextType {
   isDemoMode: boolean;
   setDemoMode: (val: boolean) => void;
   refreshData: () => Promise<void>;
-  syncStravaActivities: (givenToken?: string) => Promise<void>;
+  syncStravaActivities: (givenToken?: string, targetUser?: Profile | null) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -211,9 +211,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  const syncStravaActivities = async (givenToken?: string) => {
+  const syncStravaActivities = async (givenToken?: string, targetUser?: Profile | null) => {
     const token = givenToken || (typeof window !== 'undefined' ? localStorage.getItem('cisco_strava_token') : null);
-    if (!token || !currentUser) return;
+    const activeUser = targetUser || currentUser || DEMO_PROFILES[0];
+    if (!token) return;
 
     try {
       const res = await fetch(`/api/strava/user-activities?token=${encodeURIComponent(token)}`);
@@ -222,8 +223,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data.success && Array.isArray(data.activities) && data.activities.length > 0) {
         const newActs: Activity[] = data.activities.map((act: any) => ({
           ...act,
-          profile_id: currentUser.id,
-          profile: currentUser,
+          profile_id: activeUser.id,
+          profile: activeUser,
         }));
 
         setActivities((prev) => {
@@ -312,14 +313,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
 
         if (stravaToken) {
-          syncStravaActivities(stravaToken);
+          syncStravaActivities(stravaToken, updatedUser);
         }
 
         setShowOnboardingModal(true);
       } else {
         const existingToken = localStorage.getItem('cisco_strava_token');
         if (existingToken) {
-          syncStravaActivities(existingToken);
+          const activeUser = loadedUser || currentUser || DEMO_PROFILES[0];
+          syncStravaActivities(existingToken, activeUser);
         }
       }
     }

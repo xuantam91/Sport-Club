@@ -59,10 +59,10 @@ export const refreshStravaToken = async (refreshToken: string) => {
 };
 
 /**
- * Lấy danh sách bài tập thể thao mới nhất của vận động viên từ Strava
+ * Lấy danh sách bài tập thể thao mới nhất của vận động viên từ Strava (tối đa 200 bài)
  */
 export const fetchStravaActivities = async (accessToken: string, afterTimestamp?: number) => {
-  let url = `https://www.strava.com/api/v3/athlete/activities?per_page=50`;
+  let url = `https://www.strava.com/api/v3/athlete/activities?per_page=200`;
   if (afterTimestamp) {
     url += `&after=${afterTimestamp}`;
   }
@@ -72,7 +72,9 @@ export const fetchStravaActivities = async (accessToken: string, afterTimestamp?
   });
 
   if (!res.ok) {
-    throw new Error('Lỗi tải danh sách bài tập từ Strava');
+    const errText = await res.text();
+    console.error('Strava API error response:', res.status, errText);
+    throw new Error(`Strava API (${res.status}): ${errText}`);
   }
 
   return res.json();
