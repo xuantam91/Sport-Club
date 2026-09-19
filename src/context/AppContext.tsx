@@ -20,7 +20,10 @@ interface AppContextType {
   updateRules: (newRules: SportRule[]) => void;
   addActivity: (act: Partial<Activity>) => void;
   createTeam: (team: { name: string; description: string }) => Team;
+  updateTeam: (teamId: string, updatedData: Partial<Team>) => void;
   joinTeam: (teamCode: string) => boolean;
+  joinTeamById: (teamId: string) => boolean;
+  leaveTeam: (targetUserId?: string) => void;
   createChallenge: (ch: Omit<Challenge, 'id' | 'participant_ids' | 'status'>) => Challenge;
   updateChallenge: (id: string, updatedData: Partial<Challenge>) => void;
   joinChallenge: (challengeId: string) => void;
@@ -140,19 +143,109 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newTeam;
   };
 
+  const updateTeam = (teamId: string, updatedData: Partial<Team>) => {
+    setTeams((prev) => {
+      const updated = prev.map((t) => (t.id === teamId ? { ...t, ...updatedData } : t));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cisco_sport_teams', JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    setProfiles((prev) =>
+      prev.map((p) => {
+        if (p.team_id === teamId) {
+          const updatedTeam = { ...p.team, ...updatedData } as Team;
+          return { ...p, team: updatedTeam };
+        }
+        return p;
+      })
+    );
+
+    if (currentUser?.team_id === teamId) {
+      setCurrentUser((prev) => (prev ? ({ ...prev, team: { ...prev.team, ...updatedData } as Team }) : null));
+    }
+  };
+
   const joinTeam = (teamCode: string): boolean => {
     const targetTeam = teams.find((t) => t.code.toUpperCase() === teamCode.trim().toUpperCase());
     if (!targetTeam || !currentUser) return false;
+    return joinTeamById(targetTeam.id);
+  };
 
-    const updatedUser = { ...currentUser, team_id: targetTeam.id, team: targetTeam };
+  const joinTeamById = (teamId: string): boolean => {
+    const targetTeam = teams.find((t) => t.id === teamId);
+    if (!targetTeam || !currentUser) return false;
+
+    // Rời team cũ nếu đang thuộc team khác
+    if (currentUser.team_id && currentUser.team_id !== teamId) {
+      const oldTeamId = currentUser.team_id;
+      setTeams((prev) =>
+        prev.map((t) => (t.id === oldTeamId ? { ...t, member_count: Math.max(0, (t.member_count || 1) - 1) } : t))
+      );
+    }
+
+    const updatedUser: Profile = { ...currentUser, team_id: targetTeam.id, team: targetTeam };
     setCurrentUser(updatedUser);
-    setProfiles((prev) => prev.map((p) => (p.id === currentUser.id ? updatedUser : p)));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cisco_sport_user', JSON.stringify(updatedUser));
+    }
 
-    setTeams((prev) =>
-      prev.map((t) => (t.id === targetTeam.id ? { ...t, member_count: (t.member_count || 0) + 1 } : t))
-    );
+    setProfiles((prev) => {
+      const updated = prev.map((p) => (p.id === currentUser.id ? updatedUser : p));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cisco_sport_profiles', JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    setTeams((prev) => {
+      const updated = prev.map((t) => (t.id === targetTeam.id ? { ...t, member_count: (t.member_count || 0) + 1 } : t));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cisco_sport_teams', JSON.stringify(updated));
+      }
+      return updated;
+    });
 
     return true;
+  };
+
+  const leaveTeam = (targetUserId?: string) => {
+    const userIdToLeave = targetUserId || currentUser?.id;
+    if (!userIdToLeave) return;
+
+    const userProfile = profiles.find((p) => p.id === userIdToLeave);
+    const oldTeamId = userProfile?.team_id || (userIdToLeave === currentUser?.id ? currentUser?.team_id : undefined);
+
+    if (oldTeamId) {
+      setTeams((prev) => {
+        const updated = prev.map((t) =>
+          t.id === oldTeamId ? { ...t, member_count: Math.max(0, (t.member_count || 1) - 1) } : t
+        );
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('cisco_sport_teams', JSON.stringify(updated));
+        }
+        return updated;
+      });
+    }
+
+    const updatedUserProps = { team_id: undefined, team: undefined, role: userProfile?.role === 'captain' ? ('member' as const) : (userProfile?.role || 'member' as const) };
+
+    setProfiles((prev) => {
+      const updated = prev.map((p) => (p.id === userIdToLeave ? { ...p, ...updatedUserProps } : p));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cisco_sport_profiles', JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    if (currentUser?.id === userIdToLeave) {
+      const updatedCurrentUser = { ...currentUser, ...updatedUserProps };
+      setCurrentUser(updatedCurrentUser);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cisco_sport_user', JSON.stringify(updatedCurrentUser));
+      }
+    }
   };
 
   const createChallenge = (chData: Omit<Challenge, 'id' | 'participant_ids' | 'status'>): Challenge => {
@@ -414,7 +507,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateRules,
         addActivity,
         createTeam,
+        updateTeam,
         joinTeam,
+        joinTeamById,
+        leaveTeam,
         createChallenge,
         updateChallenge,
         joinChallenge,
