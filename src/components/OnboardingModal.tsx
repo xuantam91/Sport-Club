@@ -5,7 +5,7 @@ import { useApp } from '@/context/AppContext';
 import { Zap, Mail, Lock, User, Users, ArrowRight, Camera, Upload, Eye, EyeOff } from 'lucide-react';
 
 export const OnboardingModal: React.FC = () => {
-  const { currentUser, teams, completeOnboarding, showOnboardingModal, setShowOnboardingModal } = useApp();
+  const { currentUser, teams, completeOnboarding, showOnboardingModal, setShowOnboardingModal, t } = useApp();
 
   const [fullName, setFullName] = useState(currentUser?.full_name || '');
   const [username, setUsername] = useState('');
@@ -81,9 +81,9 @@ export const OnboardingModal: React.FC = () => {
           <div className="space-y-0.5">
             <div className="flex items-center space-x-1.5 text-[#CCFF00] font-extrabold text-[10px] uppercase tracking-wider">
               <Zap className="w-3.5 h-3.5 fill-[#CCFF00]" />
-              <span>STRAVA CONNECTED</span>
+              <span>{t('onboarding', 'tag')}</span>
             </div>
-            <h3 className="font-black text-lg sm:text-xl text-white tracking-tight">HOÀN THIỆN HỒ SƠ CISCO GSC</h3>
+            <h3 className="font-black text-lg sm:text-xl text-white tracking-tight">{t('onboarding', 'title')}</h3>
           </div>
 
           <button
@@ -99,7 +99,7 @@ export const OnboardingModal: React.FC = () => {
           <div
             className="relative group cursor-pointer shrink-0"
             onClick={() => fileInputRef.current?.click()}
-            title="Nhấp để thay đổi ảnh đại diện"
+            title={t('onboarding', 'changeAvatarTooltip')}
           >
             <img
               src={avatarUrl || currentUser.avatar_url}
@@ -133,7 +133,7 @@ export const OnboardingModal: React.FC = () => {
               className="flex items-center space-x-1 px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[#00BCEB] border border-slate-700 text-[10px] font-semibold transition-colors"
             >
               <Upload className="w-3 h-3" />
-              <span>Đổi ảnh đại diện</span>
+              <span>{t('onboarding', 'changeAvatarBtn')}</span>
             </button>
           </div>
         </div>
@@ -143,7 +143,7 @@ export const OnboardingModal: React.FC = () => {
           {/* Tên Hiển Thị & Giới Tính */}
           <div className="grid grid-cols-3 gap-2">
             <div className="col-span-2">
-              <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">Tên Hiển Thị</label>
+              <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">{t('onboarding', 'displayNameLabel')}</label>
               <div className="relative">
                 <User className="w-3.5 h-3.5 text-[#00BCEB] absolute left-2.5 top-2.5" />
                 <input
@@ -158,22 +158,22 @@ export const OnboardingModal: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">Giới Tính</label>
+              <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">{t('onboarding', 'genderLabel')}</label>
               <select
                 value={gender}
                 onChange={(e) => setGender(e.target.value as any)}
                 className="w-full px-2 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-[#00BCEB]"
               >
-                <option value="male">Nam</option>
-                <option value="female">Nữ</option>
-                <option value="other">Khác</option>
+                <option value="male">{t('onboarding', 'male')}</option>
+                <option value="female">{t('onboarding', 'female')}</option>
+                <option value="other">{t('onboarding', 'other')}</option>
               </select>
             </div>
           </div>
 
           {/* Email */}
           <div>
-            <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">Email Công Ty / Cá Nhân</label>
+            <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">{t('onboarding', 'emailLabel')}</label>
             <div className="relative">
               <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
               <input
@@ -189,7 +189,7 @@ export const OnboardingModal: React.FC = () => {
 
           {/* Team Selection */}
           <div>
-            <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">Chọn Đội Nhóm Cisco (Team)</label>
+            <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">{t('onboarding', 'selectTeamLabel')}</label>
             <div className="relative">
               <Users className="w-3.5 h-3.5 text-[#00BCEB] absolute left-2.5 top-2.5" />
               <select
@@ -216,7 +216,7 @@ export const OnboardingModal: React.FC = () => {
               className="accent-[#00BCEB] w-3.5 h-3.5 rounded"
             />
             <label htmlFor="notifCheck" className="text-[11px] text-slate-300 font-medium cursor-pointer">
-              Nhận thông báo cập nhật điểm thành tích
+              {t('onboarding', 'receiveNotifLabel')}
             </label>
           </div>
 
@@ -226,7 +226,7 @@ export const OnboardingModal: React.FC = () => {
               type="submit"
               className="w-full py-3 rounded-xl bg-gradient-to-r from-[#FC4C02] via-orange-500 to-[#00BCEB] text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-[#FC4C02]/20 hover:opacity-95 transition-all flex items-center justify-center space-x-2 btn-interactive"
             >
-              <span>HOÀN THÀNH HỒ SƠ & BẮT ĐẦU</span>
+              <span>{t('onboarding', 'submitBtn')}</span>
               <ArrowRight className="w-4 h-4 text-slate-950" />
             </button>
           </div>

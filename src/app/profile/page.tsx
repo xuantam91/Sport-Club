@@ -510,27 +510,27 @@ export default function ProfilePage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center space-x-2">
             <Calendar className="w-5 h-5 text-[#00BCEB]" />
-            <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">Bộ Lọc Thời Gian Thống Kê</h3>
+            <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">{t('profile', 'timeFilterTitle')}</h3>
           </div>
 
           <span className="text-xs text-slate-400 font-medium">
-            {timeFilter === 'all' && 'Hiển thị tất cả lịch sử tập luyện'}
-            {timeFilter === 'week' && 'Thời gian: Tuần này'}
-            {timeFilter === 'month' && 'Thời gian: Tháng này'}
-            {timeFilter === 'quarter' && 'Thời gian: Quý này'}
-            {timeFilter === 'year' && 'Thời gian: Năm 2026'}
-            {timeFilter === 'custom' && 'Thời gian: Khoảng tùy chọn'}
+            {timeFilter === 'all' && t('profile', 'showingAllHistory')}
+            {timeFilter === 'week' && t('profile', 'showingWeek')}
+            {timeFilter === 'month' && t('profile', 'showingMonth')}
+            {timeFilter === 'quarter' && t('profile', 'showingQuarter')}
+            {timeFilter === 'year' && t('profile', 'showingYear')}
+            {timeFilter === 'custom' && t('profile', 'showingCustom')}
           </span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 pt-1">
           {[
-            { id: 'all', label: '🌐 Tất Cả' },
-            { id: 'week', label: '📅 Tuần Này' },
-            { id: 'month', label: '📆 Tháng Này' },
-            { id: 'quarter', label: '📊 Quý Này' },
-            { id: 'year', label: '🏆 Năm 2026' },
-            { id: 'custom', label: '⚙️ Khoảng Tùy Chọn' },
+            { id: 'all', label: t('profile', 'filterAll') },
+            { id: 'week', label: t('profile', 'filterWeek') },
+            { id: 'month', label: t('profile', 'filterMonth') },
+            { id: 'quarter', label: t('profile', 'filterQuarter') },
+            { id: 'year', label: t('profile', 'filterYear') },
+            { id: 'custom', label: t('profile', 'filterCustom') },
           ].map((item) => (
             <button
               key={item.id}
@@ -549,7 +549,7 @@ export default function ProfilePage() {
         {timeFilter === 'custom' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-800">
             <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Từ ngày</label>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">{t('profile', 'startDateLabel')}</label>
               <input
                 type="date"
                 value={customStart}
@@ -558,7 +558,7 @@ export default function ProfilePage() {
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Đến ngày</label>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">{t('profile', 'endDateLabel')}</label>
               <input
                 type="date"
                 value={customEnd}
@@ -573,22 +573,22 @@ export default function ProfilePage() {
       {/* TỔNG QUAN THÀNH TÍCH (Overall Stats Summary Grid) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="glass-panel p-5 rounded-3xl border border-slate-800 text-center space-y-1">
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Tổng Cự Ly</p>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{t('profile', 'totalDistance')}</p>
           <p className="text-2xl font-black text-[#CCFF00]">{(totalDistMeters / 1000).toFixed(1)} <span className="text-xs font-normal text-slate-400">km</span></p>
         </div>
 
         <div className="glass-panel p-5 rounded-3xl border border-slate-800 text-center space-y-1">
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Tổng Điểm Thưởng</p>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{t('profile', 'totalPoints')}</p>
           <p className="text-2xl font-black text-[#FC4C02]">+{totalPoints.toFixed(1)} <span className="text-xs font-normal text-[#FC4C02]/70">pts</span></p>
         </div>
 
         <div className="glass-panel p-5 rounded-3xl border border-slate-800 text-center space-y-1">
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Độ Cao Leo Dốc</p>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{t('profile', 'totalElevation')}</p>
           <p className="text-2xl font-black text-slate-200">{Math.round(totalElevation)} <span className="text-xs font-normal text-slate-500">m</span></p>
         </div>
 
         <div className="glass-panel p-5 rounded-3xl border border-slate-800 text-center space-y-1">
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Thời Gian Di Chuyển</p>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{t('profile', 'movingTime')}</p>
           <p className="text-2xl font-black text-[#00BCEB]">{formatDuration(totalMovingTimeSec)}</p>
         </div>
       </div>

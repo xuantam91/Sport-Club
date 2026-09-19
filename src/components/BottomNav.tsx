@@ -8,15 +8,15 @@ import { useApp } from '@/context/AppContext';
 
 export const BottomNav: React.FC = () => {
   const pathname = usePathname();
-  const { currentUser } = useApp();
+  const { currentUser, t } = useApp();
 
   const navItems = [
-    { href: '/', label: 'Xếp Hạng', icon: Trophy },
-    { href: '/challenges', label: 'Giải Đấu', icon: Flame },
-    { href: '/teams', label: 'Teams', icon: Users },
-    { href: '/activities', label: 'Hoạt Động', icon: Activity },
-    { href: '/profile', label: 'Cá Nhân', icon: User },
-    ...(currentUser?.role && ['admin', 'organizer'].includes(currentUser.role) ? [{ href: '/admin', label: 'Admin', icon: ShieldCheck }] : []),
+    { href: '/', label: t('nav', 'leaderboard'), icon: Trophy },
+    { href: '/challenges', label: t('nav', 'challenges'), icon: Flame },
+    { href: '/teams', label: t('nav', 'teams'), icon: Users },
+    { href: '/activities', label: t('nav', 'activities'), icon: Activity },
+    { href: '/profile', label: t('nav', 'profile'), icon: User },
+    ...(currentUser?.role && ['admin', 'organizer'].includes(currentUser.role) ? [{ href: '/admin', label: t('nav', 'admin'), icon: ShieldCheck }] : []),
   ];
 
   return (
