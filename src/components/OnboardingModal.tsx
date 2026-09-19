@@ -4,6 +4,8 @@ import React, { useState, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Zap, Mail, Lock, User, Users, ArrowRight, Camera, Upload, Eye, EyeOff } from 'lucide-react';
 
+import { compressImage } from '@/lib/imageUtils';
+
 export const OnboardingModal: React.FC = () => {
   const { currentUser, teams, completeOnboarding, showOnboardingModal, setShowOnboardingModal, t } = useApp();
 
@@ -44,16 +46,15 @@ export const OnboardingModal: React.FC = () => {
 
   if (!showOnboardingModal || !currentUser) return null;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          setAvatarUrl(reader.result);
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressedBase64 = await compressImage(file, 300, 300, 0.85);
+        setAvatarUrl(compressedBase64);
+      } catch (err) {
+        console.error('Lỗi nén ảnh:', err);
+      }
     }
   };
 
