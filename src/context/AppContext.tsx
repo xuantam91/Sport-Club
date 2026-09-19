@@ -46,11 +46,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isDemoMode, setDemoMode] = useState<boolean>(false);
   const [language, setLanguage] = useState<Language>('vi');
   const [rules, setRules] = useState<SportRule[]>(DEFAULT_SPORT_RULES);
-  const [teams, setTeams] = useState<Team[]>(DEMO_TEAMS);
-  const [profiles, setProfiles] = useState<Profile[]>(DEMO_PROFILES);
-  const [activities, setActivities] = useState<Activity[]>(DEMO_ACTIVITIES);
-  const [challenges, setChallenges] = useState<Challenge[]>(DEMO_CHALLENGES);
-  const [currentUser, setCurrentUser] = useState<Profile | null>(DEMO_PROFILES[0]);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [showOnboardingModal, setShowOnboardingModal] = useState<boolean>(false);
 
   useEffect(() => {
@@ -365,39 +365,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (savedUserStr) {
         try {
           const parsed = JSON.parse(savedUserStr);
-          if (parsed && parsed.id && !['usr-2', 'usr-3', 'usr-4', 'usr-5', 'usr-6'].includes(parsed.id)) {
+          if (parsed && parsed.id && !['usr-1', 'usr-2', 'usr-3', 'usr-4', 'usr-5', 'usr-6', 'usr-tamtran'].includes(parsed.id)) {
             loadedUser = parsed;
             setCurrentUser(parsed);
           } else {
-            setCurrentUser(DEMO_PROFILES[0]);
-            localStorage.setItem('cisco_sport_user', JSON.stringify(DEMO_PROFILES[0]));
+            localStorage.removeItem('cisco_sport_user');
+            setCurrentUser(null);
           }
         } catch (e) {
           console.error('Error loading saved user', e);
         }
       }
 
-      // Purge obsolete demo profiles from localStorage and ensure Tam Tran & Tommy Tran exist
+      // Purge all old demo profiles, teams, activities, challenges from localStorage
       const savedProfilesStr = localStorage.getItem('cisco_sport_profiles');
       if (savedProfilesStr) {
         try {
           const parsedProfiles: Profile[] = JSON.parse(savedProfilesStr);
           if (Array.isArray(parsedProfiles)) {
-            const validProfilesMap = new Map<string, Profile>();
-            DEMO_PROFILES.forEach((p) => validProfilesMap.set(p.id, p));
-            parsedProfiles.forEach((p) => {
-              if (p.strava_id || p.id === 'usr-1' || p.id === 'usr-tamtran') {
-                validProfilesMap.set(p.id, p);
-              }
-            });
-            const cleanedProfiles = Array.from(validProfilesMap.values());
-            setProfiles(cleanedProfiles);
-            localStorage.setItem('cisco_sport_profiles', JSON.stringify(cleanedProfiles));
+            const realProfiles = parsedProfiles.filter(
+              (p) => p.strava_id && !['usr-1', 'usr-2', 'usr-3', 'usr-4', 'usr-5', 'usr-6', 'usr-tamtran'].includes(p.id)
+            );
+            setProfiles(realProfiles);
+            localStorage.setItem('cisco_sport_profiles', JSON.stringify(realProfiles));
           }
         } catch (e) {}
       } else {
-        setProfiles(DEMO_PROFILES);
-        localStorage.setItem('cisco_sport_profiles', JSON.stringify(DEMO_PROFILES));
+        setProfiles([]);
+      }
+
+      const savedTeamsStr = localStorage.getItem('cisco_sport_teams');
+      if (savedTeamsStr) {
+        try {
+          const parsedTeams: Team[] = JSON.parse(savedTeamsStr);
+          if (Array.isArray(parsedTeams)) {
+            const realTeams = parsedTeams.filter((t) => !['team-1', 'team-2', 'team-3', 'team-4'].includes(t.id));
+            setTeams(realTeams);
+            localStorage.setItem('cisco_sport_teams', JSON.stringify(realTeams));
+          }
+        } catch (e) {}
+      } else {
+        setTeams([]);
       }
 
       const savedActivitiesStr = localStorage.getItem('cisco_sport_activities');
@@ -405,11 +413,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         try {
           const parsedActivities: Activity[] = JSON.parse(savedActivitiesStr);
           if (Array.isArray(parsedActivities)) {
-            const cleanedActivities = parsedActivities.filter(
-              (a) => !['act-2', 'act-3', 'act-4', 'act-5'].includes(a.id)
+            const realActivities = parsedActivities.filter(
+              (a) => !['act-1', 'act-2', 'act-3', 'act-4', 'act-5'].includes(a.id)
             );
-            setActivities(cleanedActivities);
-            localStorage.setItem('cisco_sport_activities', JSON.stringify(cleanedActivities));
+            setActivities(realActivities);
+            localStorage.setItem('cisco_sport_activities', JSON.stringify(realActivities));
           }
         } catch (e) {}
       } else {
@@ -421,9 +429,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         try {
           const parsedChallenges: Challenge[] = JSON.parse(savedChallengesStr);
           if (Array.isArray(parsedChallenges)) {
-            const cleanedChallenges = parsedChallenges.filter((c) => !['ch-1', 'ch-2', 'ch-3'].includes(c.id));
-            setChallenges(cleanedChallenges);
-            localStorage.setItem('cisco_sport_challenges', JSON.stringify(cleanedChallenges));
+            const realChallenges = parsedChallenges.filter((c) => !['ch-1', 'ch-2', 'ch-3'].includes(c.id));
+            setChallenges(realChallenges);
+            localStorage.setItem('cisco_sport_challenges', JSON.stringify(realChallenges));
           }
         } catch (e) {}
       } else {
