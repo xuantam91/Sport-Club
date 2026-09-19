@@ -58,36 +58,17 @@ export const DEMO_TEAMS: Team[] = [
 export const DEMO_PROFILES: Profile[] = [
   {
     id: 'usr-1',
-    full_name: 'Nguyễn Văn Minh',
-    email: 'minh.nguyen@cisco.com',
+    full_name: 'Tommy Tran',
+    email: 'tommy.tran@gmail.com',
+    username: 'tommy.tran',
     avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     department: 'Cybersecurity Architecture',
     role: 'admin',
     team_id: 'team-1',
     team: DEMO_TEAMS[0],
-    strava_id: 998811,
-    certificates: [
-      {
-        id: 'cert-1',
-        title: '🏆 TOP 1 VẬN ĐỘNG VIÊN XUẤT SẮC TUẦN 38',
-        type: 'weekly',
-        recipient_name: 'Nguyễn Văn Minh',
-        achievement_detail: 'Cự ly: 42.5 km • 45.2 pts quy đổi',
-        issue_date: '19/09/2026',
-        badge_color: 'from-amber-400 to-yellow-600',
-        verified_by: 'Ban Tổ Chức Cisco GSC Vietnam',
-      },
-      {
-        id: 'cert-2',
-        title: '🏅 FINISHER THÁCH ĐẤU BỨT PHÁ 100KM THÁNG 9',
-        type: 'monthly',
-        recipient_name: 'Nguyễn Văn Minh',
-        achievement_detail: 'Hoàn thành mốc 125 km Chạy bộ & Leo dốc',
-        issue_date: '15/09/2026',
-        badge_color: 'from-cyan-400 to-blue-600',
-        verified_by: 'Cisco Health & Sports Committee',
-      }
-    ],
+    strava_id: 162869534,
+    gender: 'male',
+    certificates: [],
     created_at: '2026-01-01',
   },
   {
@@ -100,6 +81,7 @@ export const DEMO_PROFILES: Profile[] = [
     team_id: 'team-2',
     team: DEMO_TEAMS[1],
     strava_id: 998812,
+    gender: 'female',
     created_at: '2026-01-02',
   },
   {
@@ -112,6 +94,7 @@ export const DEMO_PROFILES: Profile[] = [
     team_id: 'team-3',
     team: DEMO_TEAMS[2],
     strava_id: 998813,
+    gender: 'male',
     created_at: '2026-01-03',
   },
   {
@@ -124,6 +107,7 @@ export const DEMO_PROFILES: Profile[] = [
     team_id: 'team-1',
     team: DEMO_TEAMS[0],
     strava_id: 998814,
+    gender: 'male',
     created_at: '2026-01-04',
   },
   {
@@ -136,6 +120,7 @@ export const DEMO_PROFILES: Profile[] = [
     team_id: 'team-4',
     team: DEMO_TEAMS[3],
     strava_id: 998815,
+    gender: 'female',
     created_at: '2026-01-05',
   },
   {
@@ -148,26 +133,12 @@ export const DEMO_PROFILES: Profile[] = [
     team_id: 'team-3',
     team: DEMO_TEAMS[2],
     strava_id: 998816,
+    gender: 'male',
     created_at: '2026-01-06',
   }
 ];
 
 export const DEMO_ACTIVITIES: Activity[] = [
-  {
-    id: 'act-1',
-    profile_id: 'usr-1',
-    profile: DEMO_PROFILES[0],
-    strava_activity_id: 101,
-    name: '🌅 Chạy sáng Hồ Tây bứt phá cự ly',
-    type: 'Run',
-    distance: 12500,
-    moving_time: 3900,
-    elapsed_time: 4000,
-    total_elevation_gain: 120,
-    calculated_points: 13.1,
-    start_date: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-    created_at: new Date().toISOString(),
-  },
   {
     id: 'act-2',
     profile_id: 'usr-2',
