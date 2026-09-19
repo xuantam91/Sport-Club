@@ -10,6 +10,8 @@ export const OnboardingModal: React.FC = () => {
   const [fullName, setFullName] = useState(currentUser?.full_name || '');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
   const [password, setPassword] = useState('');
   const [selectedTeamId, setSelectedTeamId] = useState(currentUser?.team_id || (teams[0] ? teams[0].id : ''));
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -17,6 +19,8 @@ export const OnboardingModal: React.FC = () => {
   React.useEffect(() => {
     if (currentUser) {
       setFullName(currentUser.full_name || '');
+      setAvatarUrl(currentUser.avatar_url || '');
+      setGender(currentUser.gender || 'male');
       
       const cleanSlug = (currentUser.username || currentUser.full_name)
         .toLowerCase()
@@ -30,7 +34,7 @@ export const OnboardingModal: React.FC = () => {
       if (currentUser.email && !currentUser.email.includes('minh.nguyen')) {
         setEmail(currentUser.email);
       } else {
-        setEmail(`${cleanSlug}@cisco.com`);
+        setEmail(`${cleanSlug}@gmail.com`);
       }
     }
   }, [currentUser]);
@@ -43,6 +47,8 @@ export const OnboardingModal: React.FC = () => {
       fullName,
       username,
       email,
+      avatarUrl,
+      gender,
       teamId: selectedTeamId,
       emailNotifications,
     });
@@ -87,19 +93,34 @@ export const OnboardingModal: React.FC = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Tên Hiển Thị */}
-          <div>
-            <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Họ & Tên Hiển Thị (Display Name)</label>
-            <div className="relative">
-              <User className="w-4 h-4 text-[#00BCEB] absolute left-3 top-3" />
-              <input
-                type="text"
-                required
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Nguyễn Văn Minh"
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-[#00BCEB]"
-              />
+          {/* Tên Hiển Thị & Giới Tính */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Họ & Tên Hiển Thị (Display Name)</label>
+              <div className="relative">
+                <User className="w-4 h-4 text-[#00BCEB] absolute left-3 top-3" />
+                <input
+                  type="text"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Nguyễn Văn Minh"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-[#00BCEB]"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Giới Tính</label>
+              <select
+                value={gender}
+                onChange={(e) => setGender(e.target.value as any)}
+                className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-[#00BCEB]"
+              >
+                <option value="male">👨 Nam</option>
+                <option value="female">👩 Nữ</option>
+                <option value="other">⚡ Khác</option>
+              </select>
             </div>
           </div>
 
@@ -121,7 +142,7 @@ export const OnboardingModal: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Email Công Ty (Cisco)</label>
+              <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Email Nhận Thông Báo (Tùy Chọn)</label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                 <input
@@ -129,11 +150,27 @@ export const OnboardingModal: React.FC = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="minh.nguyen@cisco.com"
+                  placeholder="tommy@gmail.com"
                   className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-[#00BCEB]"
                 />
               </div>
             </div>
+          </div>
+
+          {/* Tùy Chỉnh Avatar URL */}
+          <div>
+            <label className="block text-xs font-bold text-slate-300 uppercase mb-1">URL Ảnh Đại Diện (Avatar)</label>
+            <div className="relative">
+              <Sparkles className="w-4 h-4 text-amber-400 absolute left-3 top-3" />
+              <input
+                type="text"
+                value={avatarUrl}
+                onChange={(e) => setAvatarUrl(e.target.value)}
+                placeholder="https://..."
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-[#00BCEB]"
+              />
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">Mặc định lấy từ Strava. Bạn có thể thay đổi bằng URL ảnh khác nếu muốn.</p>
           </div>
 
           {/* Password (for password reset) */}

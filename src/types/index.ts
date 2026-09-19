@@ -46,6 +46,7 @@ export interface Profile {
   username?: string;
   email?: string;
   avatar_url?: string;
+  gender?: 'male' | 'female' | 'other';
   department?: string;
   role: UserRole;
   team_id?: string;

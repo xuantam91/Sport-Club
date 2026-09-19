@@ -26,7 +26,7 @@ interface AppContextType {
   updateMemberRole: (userId: string, role: UserRole) => void;
   assignMemberTeam: (userId: string, teamId: string) => void;
   randomTeamDraft: (memberIds: string[], targetTeamIds: string[]) => void;
-  completeOnboarding: (data: { fullName?: string; username: string; email: string; teamId: string; emailNotifications: boolean }) => void;
+  completeOnboarding: (data: { fullName?: string; username: string; email: string; avatarUrl?: string; gender?: 'male' | 'female' | 'other'; teamId: string; emailNotifications: boolean }) => void;
   showOnboardingModal: boolean;
   setShowOnboardingModal: (val: boolean) => void;
   isDemoMode: boolean;
@@ -234,6 +234,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const stravaName = params.get('name');
         const stravaAvatar = params.get('avatar');
         const stravaUsername = params.get('username');
+        const stravaEmail = params.get('email');
+        const stravaGender = (params.get('gender') as 'male' | 'female' | 'other') || 'male';
         const stravaId = params.get('strava_id');
 
         const baseUser = currentUser || DEMO_PROFILES[0];
@@ -242,6 +244,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           full_name: stravaName || baseUser.full_name,
           avatar_url: stravaAvatar || baseUser.avatar_url,
           username: stravaUsername || baseUser.username || (stravaName ? stravaName.toLowerCase().replace(/\s+/g, '.') : 'vanguard.runner'),
+          email: stravaEmail || baseUser.email,
+          gender: stravaGender,
           strava_id: stravaId ? Number(stravaId) : baseUser.strava_id,
         };
 
@@ -261,7 +265,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   /**
    * Hoàn tất cấu hình tài khoản sau khi liên kết Strava (Onboarding)
    */
-  const completeOnboarding = (data: { fullName?: string; username: string; email: string; teamId: string; emailNotifications: boolean }) => {
+  const completeOnboarding = (data: { fullName?: string; username: string; email: string; avatarUrl?: string; gender?: 'male' | 'female' | 'other'; teamId: string; emailNotifications: boolean }) => {
     if (!currentUser) return;
 
     const targetTeam = teams.find((t) => t.id === data.teamId);
@@ -270,6 +274,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       full_name: data.fullName || currentUser.full_name,
       username: data.username,
       email: data.email,
+      avatar_url: data.avatarUrl || currentUser.avatar_url,
+      gender: data.gender || currentUser.gender || 'male',
       team_id: data.teamId,
       team: targetTeam,
       email_notifications: data.emailNotifications,
