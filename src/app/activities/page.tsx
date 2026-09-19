@@ -79,6 +79,19 @@ export default function ActivitiesPage() {
     return `${mins}m`;
   };
 
+  // Helper quy đổi số gọn (K, M) và làm tròn 1 chữ số thập phân để triệt tiêu trôi phẩy JS (ví dụ: +875.6300000000006 -> +875.6 hoặc 1.2K)
+  const formatCompactNumber = (num: number): string => {
+    if (num === undefined || num === null || isNaN(num)) return '0';
+    const rounded = Math.round(num * 10) / 10;
+    if (Math.abs(rounded) >= 1000000) {
+      return (rounded / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    }
+    if (Math.abs(rounded) >= 10000) {
+      return (rounded / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    }
+    return rounded.toLocaleString('vi-VN');
+  };
+
   // Helper định dạng ngày tương đối (Ví dụ: "10 phút trước", "Hôm nay 08:30")
   const formatRelativeTime = (isoString: string) => {
     if (!isoString) return '-';
@@ -168,20 +181,21 @@ export default function ActivitiesPage() {
     { type: 'Hike', name: '🥾 Leo Núi' },
   ];
 
-  const getSportBadge = (type: SportType) => {
+  // Icon biểu tượng gọn gàng cho cột "Hoạt Động Gần Nhất" (Không dùng badge to gây vỡ dòng)
+  const getSportIconOnly = (type: SportType) => {
     switch (type) {
       case 'Run':
-        return <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold inline-flex items-center gap-1">🏃 Chạy bộ</span>;
+        return <span className="w-7 h-7 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-xs flex-shrink-0" title="Chạy bộ">🏃</span>;
       case 'Ride':
-        return <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 text-xs font-bold inline-flex items-center gap-1">🚴 Đạp xe</span>;
+        return <span className="w-7 h-7 rounded-lg bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 flex items-center justify-center text-xs flex-shrink-0" title="Đạp xe">🚴</span>;
       case 'Walk':
-        return <span className="px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs font-bold inline-flex items-center gap-1">🚶 Đi bộ</span>;
+        return <span className="w-7 h-7 rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center justify-center text-xs flex-shrink-0" title="Đi bộ">🚶</span>;
       case 'Swim':
-        return <span className="px-2.5 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 text-xs font-bold inline-flex items-center gap-1">🏊 Bơi lội</span>;
+        return <span className="w-7 h-7 rounded-lg bg-blue-500/15 text-blue-400 border border-blue-500/30 flex items-center justify-center text-xs flex-shrink-0" title="Bơi lội">🏊</span>;
       case 'Hike':
-        return <span className="px-2.5 py-0.5 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-400 text-xs font-bold inline-flex items-center gap-1">🥾 Leo núi</span>;
+        return <span className="w-7 h-7 rounded-lg bg-purple-500/15 text-purple-400 border border-purple-500/30 flex items-center justify-center text-xs flex-shrink-0" title="Leo núi">🥾</span>;
       default:
-        return <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 text-xs font-bold">⚡ Khác</span>;
+        return <span className="w-7 h-7 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 flex items-center justify-center text-xs flex-shrink-0">⚡</span>;
     }
   };
 
@@ -314,8 +328,8 @@ export default function ActivitiesPage() {
                     >
                       {/* Cột 1: Vận Động Viên */}
                       <td className="py-4 px-4 sm:px-6">
-                        <div className="flex items-center space-x-3">
-                          <div className="relative">
+                        <div className="flex items-center space-x-3 min-w-[170px]">
+                          <div className="relative flex-shrink-0">
                             <img
                               src={profile.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
                               alt={profile.full_name}
@@ -327,18 +341,18 @@ export default function ActivitiesPage() {
                               </span>
                             )}
                           </div>
-                          <div>
-                            <div className="flex items-center space-x-2">
-                              <span className="font-bold text-white group-hover:text-[#00BCEB] transition-colors">
+                          <div className="min-w-0">
+                            <div className="flex items-center space-x-1.5 flex-wrap">
+                              <span className="font-bold text-white group-hover:text-[#00BCEB] transition-colors text-sm truncate">
                                 {profile.full_name}
                               </span>
                               {isCurrent && (
-                                <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-[#CCFF00] text-black">
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-[#CCFF00] text-black">
                                   BẠN
                                 </span>
                               )}
                             </div>
-                            <span className="text-xs text-slate-400 block mt-0.5 capitalize">
+                            <span className="text-xs text-slate-400 block mt-0.5 capitalize truncate">
                               {profile.role === 'admin' ? ' Ban Tổ Chức' : profile.role === 'captain' ? ' Đội Trưởng' : ' VĐV GSC'}
                             </span>
                           </div>
@@ -346,7 +360,7 @@ export default function ActivitiesPage() {
                       </td>
 
                       {/* Cột 2: Đội Nhóm */}
-                      <td className="py-4 px-4">
+                      <td className="py-4 px-4 whitespace-nowrap">
                         {profile.team ? (
                           <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-300">
                             {profile.team.name}
@@ -356,22 +370,22 @@ export default function ActivitiesPage() {
                         )}
                       </td>
 
-                      {/* Cột 3: Hoạt Động Gần Nhất */}
-                      <td className="py-4 px-4">
+                      {/* Cột 3: Hoạt Động Gần Nhất - CHỈ DÙNG ICON KHÔNG CẦN CHỮ MÔ TẢ TRÁNH VỠ GIAO DIỆN */}
+                      <td className="py-4 px-4 max-w-[220px]">
                         {latestActivity ? (
-                          <div className="space-y-1">
-                            <div className="flex items-center space-x-2">
-                              {getSportBadge(latestActivity.type)}
-                              <span className="font-semibold text-slate-200 text-xs line-clamp-1 max-w-[180px]">
+                          <div className="flex items-center space-x-2">
+                            {getSportIconOnly(latestActivity.type)}
+                            <div className="min-w-0 flex-1">
+                              <p className="font-bold text-slate-100 text-xs truncate" title={latestActivity.name}>
                                 {latestActivity.name}
-                              </span>
-                            </div>
-                            <div className="text-[11px] text-slate-400 flex items-center space-x-2">
-                              <span className="text-[#CCFF00] font-bold">{(latestActivity.distance / 1000).toFixed(2)} km</span>
-                              <span>•</span>
-                              <span>{formatTime(latestActivity.moving_time)}</span>
-                              <span>•</span>
-                              <span>{formatPace(latestActivity.distance, latestActivity.moving_time, latestActivity.type)}</span>
+                              </p>
+                              <p className="text-[11px] text-slate-400 flex items-center space-x-1.5 font-medium mt-0.5 whitespace-nowrap">
+                                <span className="text-[#CCFF00] font-extrabold">{(latestActivity.distance / 1000).toFixed(1)} km</span>
+                                <span className="text-slate-600">•</span>
+                                <span>{formatTime(latestActivity.moving_time)}</span>
+                                <span className="text-slate-600">•</span>
+                                <span>{formatPace(latestActivity.distance, latestActivity.moving_time, latestActivity.type)}</span>
+                              </p>
                             </div>
                           </div>
                         ) : (
@@ -380,35 +394,35 @@ export default function ActivitiesPage() {
                       </td>
 
                       {/* Cột 4: Tổng Số Hoạt Động */}
-                      <td className="py-4 px-4 text-center">
+                      <td className="py-4 px-4 text-center whitespace-nowrap">
                         <span className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-bold text-slate-200">
                           {totalCount} log
                         </span>
                       </td>
 
                       {/* Cột 5: Tổng Cự Ly */}
-                      <td className="py-4 px-4 text-right">
+                      <td className="py-4 px-4 text-right whitespace-nowrap">
                         <span className="font-extrabold text-[#CCFF00]">
-                          {totalDistanceKm} <span className="text-[10px] text-slate-400 font-normal">km</span>
+                          {formatCompactNumber(parseFloat(totalDistanceKm))} <span className="text-[10px] text-slate-400 font-normal">km</span>
                         </span>
                       </td>
 
                       {/* Cột 6: Leo Dốc */}
-                      <td className="py-4 px-4 text-right">
+                      <td className="py-4 px-4 text-right whitespace-nowrap">
                         <span className="font-bold text-slate-300">
-                          {totalElevationM} <span className="text-[10px] text-slate-500 font-normal">m</span>
+                          {formatCompactNumber(totalElevationM)} <span className="text-[10px] text-slate-500 font-normal">m</span>
                         </span>
                       </td>
 
-                      {/* Cột 7: Tổng Điểm */}
-                      <td className="py-4 px-4 text-right">
+                      {/* Cột 7: Tổng Điểm - SỐ TO QUY ĐỔI K, M TRÁNH PHẨY TRÔI (VD: +875.6 pts) */}
+                      <td className="py-4 px-4 text-right whitespace-nowrap">
                         <span className="font-extrabold text-[#FC4C02]">
-                          +{totalPoints} <span className="text-[10px] text-[#FC4C02]/70 font-normal">pts</span>
+                          +{formatCompactNumber(totalPoints)} <span className="text-[10px] text-[#FC4C02]/70 font-normal">pts</span>
                         </span>
                       </td>
 
                       {/* Cột 8: Cập Nhật */}
-                      <td className="py-4 px-4 text-center">
+                      <td className="py-4 px-4 text-center whitespace-nowrap">
                         {latestActivity ? (
                           <span className="text-xs font-bold text-cyan-400 bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-800/40">
                             {formatRelativeTime(latestActivity.start_date)}
@@ -419,7 +433,7 @@ export default function ActivitiesPage() {
                       </td>
 
                       {/* Cột 9: Thao Tác */}
-                      <td className="py-4 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-4 px-4 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => setSelectedAthleteDetail(profile)}
                           className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-[#00BCEB] hover:text-slate-950 text-slate-200 text-xs font-bold transition-all border border-slate-700 inline-flex items-center space-x-1"
@@ -482,19 +496,19 @@ export default function ActivitiesPage() {
               <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800 text-center">
                 <p className="text-[10px] text-slate-400 uppercase font-bold">Tổng Cự Ly</p>
                 <p className="font-extrabold text-lg text-[#CCFF00] mt-0.5">
-                  {(selectedAthleteActivities.reduce((acc, curr) => acc + (curr.distance || 0), 0) / 1000).toFixed(2)} km
+                  {formatCompactNumber(selectedAthleteActivities.reduce((acc, curr) => acc + (curr.distance || 0), 0) / 1000)} km
                 </p>
               </div>
               <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800 text-center">
                 <p className="text-[10px] text-slate-400 uppercase font-bold">Tổng Leo Dốc</p>
                 <p className="font-extrabold text-lg text-slate-200 mt-0.5">
-                  {Math.round(selectedAthleteActivities.reduce((acc, curr) => acc + (curr.total_elevation_gain || 0), 0))} m
+                  {formatCompactNumber(selectedAthleteActivities.reduce((acc, curr) => acc + (curr.total_elevation_gain || 0), 0))} m
                 </p>
               </div>
               <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800 text-center">
                 <p className="text-[10px] text-slate-400 uppercase font-bold">Tổng Điểm Tích Lũy</p>
                 <p className="font-extrabold text-lg text-[#FC4C02] mt-0.5">
-                  +{selectedAthleteActivities.reduce((acc, curr) => acc + (curr.calculated_points || 0), 0)} pts
+                  +{formatCompactNumber(selectedAthleteActivities.reduce((acc, curr) => acc + (curr.calculated_points || 0), 0))} pts
                 </p>
               </div>
             </div>
@@ -519,7 +533,7 @@ export default function ActivitiesPage() {
                     >
                       <div className="space-y-1">
                         <div className="flex items-center space-x-2">
-                          {getSportBadge(act.type)}
+                          {getSportIconOnly(act.type)}
                           <span className="font-bold text-white text-sm">{act.name}</span>
                         </div>
                         <p className="text-xs text-slate-400 flex items-center space-x-2">
@@ -543,7 +557,7 @@ export default function ActivitiesPage() {
                         </div>
                         <div>
                           <p className="text-[9px] text-slate-500 uppercase font-bold">Điểm</p>
-                          <p className="font-extrabold text-xs text-[#FC4C02]">+{act.calculated_points}</p>
+                          <p className="font-extrabold text-xs text-[#FC4C02]">+{formatCompactNumber(act.calculated_points)}</p>
                         </div>
                       </div>
                     </div>
