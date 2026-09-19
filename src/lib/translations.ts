@@ -192,6 +192,11 @@ export const translations = {
     featRandomDraft: { vi: 'Bốc thăm chia đội online', en: 'Online Random Team Draft', zh: '在线随机分组抽签' },
     featFlexiblePoints: { vi: 'Quy đổi điểm số linh hoạt', en: 'Flexible Point Conversion Rules', zh: '灵活积分换算规则' },
     support: { vi: 'Hỗ Trợ & Strava API', en: 'Support & Strava API', zh: '支持与Strava API' },
+    stravaSyncDesc: {
+      vi: 'Tự động kết nối bài tập cho cán bộ nhân viên Cisco GSC Vietnam.',
+      en: 'Automatically sync workout activities for Cisco GSC Vietnam members.',
+      zh: '自动同步思科越南GSC员工的运动记录。',
+    },
     copyright: {
       vi: '© 2026 Cisco GSC Vietnam. All rights reserved. Cisco Kinetic Sports Hub.',
       en: '© 2026 Cisco GSC Vietnam. All rights reserved. Cisco Kinetic Sports Hub.',

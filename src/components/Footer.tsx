@@ -95,17 +95,21 @@ export const Footer: React.FC = () => {
                 <span>Strava API Live Sync</span>
               </div>
               <p className="text-[11px] text-slate-400 leading-normal">
-                Tự động kết nối bài tập cho cán bộ nhân viên Cisco GSC Vietnam.
+                {t('footer', 'stravaSyncDesc')}
               </p>
             </div>
           </div>
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <p>{t('footer', 'copyright')}</p>
-          <div className="flex items-center space-x-1 text-slate-400 font-medium">
-            <span>Powered for Cisco GSC Vietnam by</span>
+        <div className="pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4 text-[11px] sm:text-xs text-slate-500 text-center sm:text-left">
+          <p>
+            <span className="sm:hidden">&copy; 2026 Cisco GSC Vietnam</span>
+            <span className="hidden sm:inline">{t('footer', 'copyright')}</span>
+          </p>
+          <div className="flex items-center justify-center space-x-1 text-slate-400 font-medium">
+            <span className="sm:hidden">Built with</span>
+            <span className="hidden sm:inline">Powered for Cisco GSC Vietnam by</span>
             <span className="font-extrabold text-[#CCFF00]">Tommy</span>
             <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 inline ml-0.5" />
           </div>
