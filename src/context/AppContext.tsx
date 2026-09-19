@@ -430,16 +430,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           let updatedUser: Profile;
 
           if (existingIndex >= 0) {
-            // Cập nhật thông tin cho VĐV đã tồn tại
+            // Cập nhật thông tin cho VĐV đã tồn tại: CHỈ đồng bộ bài tập thể thao, BẢO TỒN cài đặt/tên/ảnh đại diện/team đã cấu hình
             const existing = prev[existingIndex];
             updatedUser = {
               ...existing,
               role: isStravaAdmin ? 'admin' : existing.role || 'member',
-              full_name: stravaName || existing.full_name,
-              avatar_url: stravaAvatar || existing.avatar_url,
-              username: stravaUsername || existing.username,
-              email: stravaEmail || existing.email,
-              gender: stravaGender || existing.gender || 'male',
               strava_id: numStravaId || existing.strava_id,
             };
             const updatedList = [...prev];
@@ -448,9 +443,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setCurrentUser(updatedUser);
             localStorage.setItem('cisco_sport_user', JSON.stringify(updatedUser));
             if (stravaToken) syncStravaActivities(stravaToken, updatedUser);
+            setShowOnboardingModal(false); // Không mở lại popup cài đặt cho tài khoản đã có
             return updatedList;
           } else {
-            // Tạo mới VĐV hoàn toàn trong hệ thống
+            // Tạo mới VĐV hoàn toàn trong hệ thống lần đầu kết nối Strava
             const newId = numStravaId ? `usr-strava-${numStravaId}` : `usr-${Date.now()}`;
             updatedUser = {
               id: newId,
@@ -468,11 +464,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setCurrentUser(updatedUser);
             localStorage.setItem('cisco_sport_user', JSON.stringify(updatedUser));
             if (stravaToken) syncStravaActivities(stravaToken, updatedUser);
+            setShowOnboardingModal(true); // Chỉ mở popup hoàn thiện hồ sơ cho VĐV mới lần đầu
             return updatedList;
           }
         });
-
-        setShowOnboardingModal(true);
       } else {
         const existingToken = localStorage.getItem('cisco_strava_token');
         if (existingToken) {
