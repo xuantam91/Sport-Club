@@ -418,32 +418,59 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           localStorage.setItem('cisco_strava_token', stravaToken);
         }
 
-        const baseUser = loadedUser || currentUser || DEMO_PROFILES[0];
-        const numStravaId = stravaId ? Number(stravaId) : baseUser.strava_id;
+        const numStravaId = stravaId ? Number(stravaId) : null;
         const isStravaAdmin = numStravaId === 162869534 || String(stravaId) === '162869534';
 
-        const updatedUser: Profile = {
-          ...baseUser,
-          role: isStravaAdmin ? 'admin' : 'member', // Strava ID #162869534 là Admin, các tài khoản khác là Member
-          full_name: stravaName || baseUser.full_name,
-          avatar_url: stravaAvatar || baseUser.avatar_url,
-          username: stravaUsername || baseUser.username || (stravaName ? stravaName.toLowerCase().replace(/\s+/g, '.') : 'vanguard.runner'),
-          email: stravaEmail || baseUser.email,
-          gender: stravaGender,
-          strava_id: numStravaId,
-        };
-
-        setCurrentUser(updatedUser);
-        localStorage.setItem('cisco_sport_user', JSON.stringify(updatedUser));
         setProfiles((prev) => {
-          const updated = prev.map((p) => (p.id === updatedUser.id ? updatedUser : p));
-          localStorage.setItem('cisco_sport_profiles', JSON.stringify(updated));
-          return updated;
-        });
+          // Tìm VĐV hiện có theo strava_id hoặc email
+          const existingIndex = prev.findIndex(
+            (p) => (numStravaId && p.strava_id === numStravaId) || (stravaEmail && p.email?.toLowerCase() === stravaEmail.toLowerCase())
+          );
 
-        if (stravaToken) {
-          syncStravaActivities(stravaToken, updatedUser);
-        }
+          let updatedUser: Profile;
+
+          if (existingIndex >= 0) {
+            // Cập nhật thông tin cho VĐV đã tồn tại
+            const existing = prev[existingIndex];
+            updatedUser = {
+              ...existing,
+              role: isStravaAdmin ? 'admin' : existing.role || 'member',
+              full_name: stravaName || existing.full_name,
+              avatar_url: stravaAvatar || existing.avatar_url,
+              username: stravaUsername || existing.username,
+              email: stravaEmail || existing.email,
+              gender: stravaGender || existing.gender || 'male',
+              strava_id: numStravaId || existing.strava_id,
+            };
+            const updatedList = [...prev];
+            updatedList[existingIndex] = updatedUser;
+            localStorage.setItem('cisco_sport_profiles', JSON.stringify(updatedList));
+            setCurrentUser(updatedUser);
+            localStorage.setItem('cisco_sport_user', JSON.stringify(updatedUser));
+            if (stravaToken) syncStravaActivities(stravaToken, updatedUser);
+            return updatedList;
+          } else {
+            // Tạo mới VĐV hoàn toàn trong hệ thống
+            const newId = numStravaId ? `usr-strava-${numStravaId}` : `usr-${Date.now()}`;
+            updatedUser = {
+              id: newId,
+              role: isStravaAdmin ? 'admin' : 'member',
+              full_name: stravaName || 'Vận Động Viên Cisco',
+              avatar_url: stravaAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+              username: stravaUsername || (stravaName ? stravaName.toLowerCase().replace(/\s+/g, '.') : `athlete.${numStravaId}`),
+              email: stravaEmail || `athlete.${numStravaId}@cisco.com`,
+              gender: stravaGender,
+              strava_id: numStravaId || undefined,
+              created_at: new Date().toISOString(),
+            };
+            const updatedList = [updatedUser, ...prev];
+            localStorage.setItem('cisco_sport_profiles', JSON.stringify(updatedList));
+            setCurrentUser(updatedUser);
+            localStorage.setItem('cisco_sport_user', JSON.stringify(updatedUser));
+            if (stravaToken) syncStravaActivities(stravaToken, updatedUser);
+            return updatedList;
+          }
+        });
 
         setShowOnboardingModal(true);
       } else {
