@@ -7,7 +7,7 @@ export const STRAVA_CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET || '';
  * Tạo URL ủy quyền đăng nhập Strava OAuth 2.0
  */
 export const getStravaOAuthUrl = (redirectUri: string) => {
-  const scope = 'read,activity:read_all';
+  const scope = 'read,activity:read,activity:read_all,profile:read_all';
   return `https://www.strava.com/oauth/authorize?client_id=${STRAVA_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(
     redirectUri
   )}&approval_prompt=force&scope=${scope}`;

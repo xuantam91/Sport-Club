@@ -2,12 +2,13 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { User, Shield, Activity, CheckCircle2, Building, Mail, Settings } from 'lucide-react';
+import { User, Shield, Activity, CheckCircle2, Building, Mail, Settings, RefreshCw, Zap } from 'lucide-react';
 import { Certificate } from '@/types';
 
 export default function ProfilePage() {
-  const { currentUser, activities, setShowOnboardingModal, t } = useApp();
+  const { currentUser, activities, setShowOnboardingModal, refreshData, t } = useApp();
   const [selectedCert, setSelectedCert] = useState<Certificate | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   if (!currentUser) {
     return (
@@ -19,7 +20,24 @@ export default function ProfilePage() {
     );
   }
 
-  const userActivities = activities.filter((a) => a.profile_id === currentUser.id);
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    try {
+      await refreshData();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const userActivities = activities.filter(
+    (a) =>
+      a.profile_id === currentUser.id ||
+      a.profile?.id === currentUser.id ||
+      (currentUser.strava_id && a.profile?.strava_id === currentUser.strava_id) ||
+      (currentUser.strava_id && a.strava_activity_id)
+  );
 
   const totalDistMeters = userActivities.reduce((acc, a) => acc + a.distance, 0);
   const totalPoints = userActivities.reduce((acc, a) => acc + a.calculated_points, 0);
@@ -85,12 +103,13 @@ export default function ProfilePage() {
               <CheckCircle2 className="w-4 h-4" />
               <span>{t('profile', 'stravaConnected')}</span>
             </div>
-            <p className="text-[11px] text-slate-400">Strava ID: #{currentUser.strava_id || '998811'}</p>
+            <p className="text-[11px] text-slate-400">Strava ID: #{currentUser.strava_id || '162869534'}</p>
             <a
               href="/api/strava/auth"
-              className="w-full px-3 py-1.5 rounded-xl bg-[#FC4C02] text-white font-bold text-xs hover:bg-[#e04300] transition-colors btn-interactive"
+              className="w-full px-3.5 py-1.5 rounded-xl bg-[#FC4C02] text-white font-extrabold text-xs hover:bg-[#e04300] transition-colors btn-interactive flex items-center justify-center space-x-1"
             >
-              {t('profile', 'updateOAuth')}
+              <Zap className="w-3.5 h-3.5 fill-white" />
+              <span>Tải Dữ Liệu Strava</span>
             </a>
           </div>
         </div>
@@ -157,28 +176,59 @@ export default function ProfilePage() {
 
       {/* Activity Timeline */}
       <div className="glass-panel p-6 rounded-3xl border border-slate-800 space-y-4">
-        <h2 className="font-extrabold text-lg text-white flex items-center gap-2">
-          <Activity className="w-5 h-5 text-[#FC4C02]" />
-          <span>{t('profile', 'historyTitle')}</span>
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="font-extrabold text-lg text-white flex items-center gap-2">
+            <Activity className="w-5 h-5 text-[#FC4C02]" />
+            <span>{t('profile', 'historyTitle')} ({userActivities.length})</span>
+          </h2>
 
-        <div className="space-y-3">
-          {userActivities.map((act) => (
-            <div key={act.id} className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
-              <div>
-                <h4 className="font-bold text-sm text-white">{act.name}</h4>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  {act.type} • {(act.distance / 1000).toFixed(2)} km • {new Date(act.start_date).toLocaleDateString('vi-VN')}
-                </p>
-              </div>
-
-              <div className="text-right">
-                <span className="font-extrabold text-base text-[#CCFF00]">+{act.calculated_points} pts</span>
-                <p className="text-[10px] text-slate-500">Leo dốc: {act.total_elevation_gain || 0}m</p>
-              </div>
-            </div>
-          ))}
+          <button
+            onClick={handleManualSync}
+            disabled={isSyncing}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-[#00BCEB] border border-slate-700 text-xs font-bold transition-all"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+            <span>{isSyncing ? 'Đang đồng bộ...' : 'Cập Nhật Lịch Sử'}</span>
+          </button>
         </div>
+
+        {userActivities.length === 0 ? (
+          <div className="p-8 rounded-2xl bg-slate-950/80 border border-slate-800 text-center space-y-4">
+            <Activity className="w-10 h-10 text-slate-600 mx-auto" />
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-white">Chưa ghi nhận bài tập nào từ Strava</h3>
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                Nếu bạn vừa kết nối Strava lần đầu, vui lòng nhấn nút bên dưới để cấp quyền đọc toàn bộ bài tập và tải dữ liệu vận động mới nhất về ứng dụng.
+              </p>
+            </div>
+
+            <a
+              href="/api/strava/auth"
+              className="inline-flex items-center space-x-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#FC4C02] to-[#ff6a26] text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-[#FC4C02]/20 hover:opacity-95 transition-all btn-interactive"
+            >
+              <Zap className="w-4 h-4 fill-white" />
+              <span>Ủy Quyền & Tải Dữ Liệu Strava Ngay</span>
+            </a>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {userActivities.map((act) => (
+              <div key={act.id} className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
+                <div>
+                  <h4 className="font-bold text-sm text-white">{act.name}</h4>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {act.type} • {(act.distance / 1000).toFixed(2)} km • {new Date(act.start_date).toLocaleDateString('vi-VN')}
+                  </p>
+                </div>
+
+                <div className="text-right">
+                  <span className="font-extrabold text-base text-[#CCFF00]">+{act.calculated_points} pts</span>
+                  <p className="text-[10px] text-slate-500">Leo dốc: {act.total_elevation_gain || 0}m</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* MODAL POPUP CHỨNG CHỈ VINH DANH (Digital Certificate Viewer) */}
