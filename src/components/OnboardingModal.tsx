@@ -8,11 +8,32 @@ export const OnboardingModal: React.FC = () => {
   const { currentUser, teams, completeOnboarding, showOnboardingModal, setShowOnboardingModal } = useApp();
 
   const [fullName, setFullName] = useState(currentUser?.full_name || '');
-  const [username, setUsername] = useState(currentUser?.username || currentUser?.full_name.toLowerCase().replace(/\s+/g, '.') || '');
-  const [email, setEmail] = useState(currentUser?.email || '');
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [selectedTeamId, setSelectedTeamId] = useState(currentUser?.team_id || (teams[0] ? teams[0].id : ''));
   const [emailNotifications, setEmailNotifications] = useState(true);
+
+  React.useEffect(() => {
+    if (currentUser) {
+      setFullName(currentUser.full_name || '');
+      
+      const cleanSlug = (currentUser.username || currentUser.full_name)
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9.]/g, '.')
+        .replace(/\.+/g, '.');
+
+      setUsername(currentUser.username || cleanSlug);
+      
+      if (currentUser.email && !currentUser.email.includes('minh.nguyen')) {
+        setEmail(currentUser.email);
+      } else {
+        setEmail(`${cleanSlug}@cisco.com`);
+      }
+    }
+  }, [currentUser]);
 
   if (!showOnboardingModal || !currentUser) return null;
 
