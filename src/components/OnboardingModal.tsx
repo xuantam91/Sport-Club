@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
-import { CheckCircle2, Zap, Shield, Mail, Lock, User, Users, ArrowRight, Sparkles } from 'lucide-react';
+import { Zap, Mail, Lock, User, Users, ArrowRight, Camera, Upload } from 'lucide-react';
 
 export const OnboardingModal: React.FC = () => {
   const { currentUser, teams, completeOnboarding, showOnboardingModal, setShowOnboardingModal } = useApp();
@@ -15,6 +15,8 @@ export const OnboardingModal: React.FC = () => {
   const [password, setPassword] = useState('');
   const [selectedTeamId, setSelectedTeamId] = useState(currentUser?.team_id || (teams[0] ? teams[0].id : ''));
   const [emailNotifications, setEmailNotifications] = useState(true);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     if (currentUser) {
@@ -40,6 +42,19 @@ export const OnboardingModal: React.FC = () => {
   }, [currentUser]);
 
   if (!showOnboardingModal || !currentUser) return null;
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setAvatarUrl(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,21 +89,48 @@ export const OnboardingModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Strava Imported Profile Preview */}
+        {/* Strava Imported Profile Preview & Avatar Upload */}
         <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 flex items-center space-x-4">
-          <img
-            src={currentUser.avatar_url}
-            alt={currentUser.full_name}
-            className="w-14 h-14 rounded-2xl object-cover border-2 border-[#00BCEB]"
+          <div
+            className="relative group cursor-pointer flex-shrink-0"
+            onClick={() => fileInputRef.current?.click()}
+            title="Nhấp để thay đổi ảnh đại diện từ máy tính hoặc điện thoại"
+          >
+            <img
+              src={avatarUrl || currentUser.avatar_url}
+              alt={fullName}
+              className="w-16 h-16 rounded-2xl object-cover border-2 border-[#00BCEB] shadow-md group-hover:opacity-75 transition-opacity"
+            />
+            <div className="absolute inset-0 bg-black/60 rounded-2xl flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <Camera className="w-5 h-5 text-white" />
+              <span className="text-[9px] text-white font-bold mt-0.5">Sửa ảnh</span>
+            </div>
+          </div>
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileChange}
           />
-          <div className="space-y-0.5">
+
+          <div className="space-y-1.5 flex-1 min-w-0">
             <div className="flex items-center space-x-2">
-              <span className="font-bold text-white text-base">{currentUser.full_name}</span>
-              <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-bold">
+              <span className="font-bold text-white text-base truncate">{fullName || currentUser.full_name}</span>
+              <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-bold flex-shrink-0">
                 Strava ID: #{currentUser.strava_id || '998811'}
               </span>
             </div>
-            <p className="text-xs text-slate-400">Tài khoản đã liên kết tự động qua Strava API</p>
+
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[#00BCEB] border border-slate-700 text-xs font-semibold transition-colors btn-interactive"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span>Đổi ảnh từ máy / điện thoại</span>
+            </button>
           </div>
         </div>
 
@@ -112,15 +154,17 @@ export const OnboardingModal: React.FC = () => {
 
             <div>
               <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Giới Tính</label>
-              <select
-                value={gender}
-                onChange={(e) => setGender(e.target.value as any)}
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-[#00BCEB]"
-              >
-                <option value="male">👨 Nam</option>
-                <option value="female">👩 Nữ</option>
-                <option value="other">⚡ Khác</option>
-              </select>
+              <div className="relative">
+                <select
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value as any)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-[#00BCEB]"
+                >
+                  <option value="male">Nam</option>
+                  <option value="female">Nữ</option>
+                  <option value="other">Khác</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -142,7 +186,7 @@ export const OnboardingModal: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Email Nhận Thông Báo (Tùy Chọn)</label>
+              <label className="block text-xs font-bold text-slate-300 uppercase mb-1">EMAIL</label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                 <input
@@ -155,22 +199,6 @@ export const OnboardingModal: React.FC = () => {
                 />
               </div>
             </div>
-          </div>
-
-          {/* Tùy Chỉnh Avatar URL */}
-          <div>
-            <label className="block text-xs font-bold text-slate-300 uppercase mb-1">URL Ảnh Đại Diện (Avatar)</label>
-            <div className="relative">
-              <Sparkles className="w-4 h-4 text-amber-400 absolute left-3 top-3" />
-              <input
-                type="text"
-                value={avatarUrl}
-                onChange={(e) => setAvatarUrl(e.target.value)}
-                placeholder="https://..."
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-[#00BCEB]"
-              />
-            </div>
-            <p className="text-[11px] text-slate-400 mt-1">Mặc định lấy từ Strava. Bạn có thể thay đổi bằng URL ảnh khác nếu muốn.</p>
           </div>
 
           {/* Password (for password reset) */}
@@ -219,7 +247,7 @@ export const OnboardingModal: React.FC = () => {
               className="accent-[#00BCEB] w-4 h-4"
             />
             <label htmlFor="notifCheck" className="text-xs text-slate-300 font-medium cursor-pointer">
-              Nhận thông báo cập nhật Bảng xếp hạng & Thách đấu qua Email Cisco
+              Nhận thông báo qua Email
             </label>
           </div>
 
