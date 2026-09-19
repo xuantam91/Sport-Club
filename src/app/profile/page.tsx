@@ -2,16 +2,281 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
+import { Profile, Certificate, Activity as ActivityType } from '@/types';
 import { User, Shield, Activity, CheckCircle2, Building, Mail, Settings, RefreshCw, Zap, Bug, ChevronRight, Eye, EyeOff, Lock, LogIn, LogOut, ListFilter, Calendar, Clock, PieChart, BarChart2 } from 'lucide-react';
-import { Certificate, Activity as ActivityType } from '@/types';
+
+function UnauthenticatedLoginForm({ profiles, setCurrentUser }: { profiles: Profile[]; setCurrentUser: (user: Profile | null) => void }) {
+  const [loginMode, setLoginMode] = useState<'strava' | 'password'>('strava');
+  const [identity, setIdentity] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [savedAccounts, setSavedAccounts] = useState<Profile[]>([]);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('cisco_saved_accounts');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            setSavedAccounts(parsed);
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
+
+  const saveToSavedAccounts = (prof: Profile) => {
+    if (typeof window === 'undefined' || !prof) return;
+    try {
+      const raw = localStorage.getItem('cisco_saved_accounts');
+      let list: Profile[] = raw ? JSON.parse(raw) : [];
+      list = list.filter((p) => p.id !== prof.id && (p.email !== prof.email || !prof.email));
+      list.unshift(prof);
+      list = list.slice(0, 5);
+      localStorage.setItem('cisco_saved_accounts', JSON.stringify(list));
+      setSavedAccounts(list);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const removeSavedAccount = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = savedAccounts.filter((p) => p.id !== id);
+    setSavedAccounts(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cisco_saved_accounts', JSON.stringify(updated));
+    }
+  };
+
+  const handlePasswordLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError(null);
+
+    if (!identity.trim()) {
+      setLoginError('Vui lòng nhập Email hoặc Username!');
+      return;
+    }
+
+    const query = identity.trim().toLowerCase();
+    const found = profiles.find(
+      (p) =>
+        (p.email && p.email.toLowerCase() === query) ||
+        (p.username && p.username.toLowerCase() === query) ||
+        p.full_name.toLowerCase().includes(query)
+    );
+
+    const userToSet: Profile = found || {
+      id: `usr-${Date.now()}`,
+      full_name: identity.split('@')[0] || 'Vận Động Viên Cisco',
+      username: query.split('@')[0],
+      email: identity.includes('@') ? identity : `${query}@cisco.com`,
+      role: 'member',
+      avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+      created_at: new Date().toISOString(),
+    };
+
+    setCurrentUser(userToSet);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cisco_sport_user', JSON.stringify(userToSet));
+      saveToSavedAccounts(userToSet);
+    }
+  };
+
+  return (
+    <div className="max-w-xl mx-auto my-12 glass-card rounded-3xl p-6 sm:p-10 border border-[#00BCEB]/30 space-y-6 shadow-2xl relative overflow-hidden bg-gradient-to-b from-slate-900/95 via-slate-950/90 to-slate-900/95">
+      {/* Dynamic Ambient Background Glow */}
+      <div className="absolute top-0 right-0 w-72 h-72 bg-[#FC4C02]/15 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="absolute bottom-0 left-0 w-72 h-72 bg-[#00BCEB]/15 rounded-full blur-3xl pointer-events-none"></div>
+
+      {/* Brand Header */}
+      <div className="text-center space-y-3 relative z-10">
+        <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full bg-slate-900/90 border border-[#00BCEB]/40 shadow-inner">
+          <span className="w-2 h-2 rounded-full bg-[#CCFF00] animate-pulse"></span>
+          <span className="font-extrabold text-[11px] uppercase tracking-widest bg-gradient-to-r from-white via-cyan-100 to-[#00BCEB] bg-clip-text text-transparent">
+            CISCO GSC KINETIC SPORTS HUB
+          </span>
+        </div>
+
+        <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          CỔNG ĐĂNG NHẬP VẬN ĐỘNG VIÊN
+        </h2>
+        <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
+          Đồng bộ tự động từ <span className="text-[#FC4C02] font-bold">Strava</span> hoặc đăng nhập bằng Email & Mật khẩu.
+        </p>
+      </div>
+
+      {/* High-Tech Tab Selector */}
+      <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-950/80 rounded-2xl border border-slate-800 text-xs font-extrabold relative z-10">
+        <button
+          type="button"
+          onClick={() => setLoginMode('strava')}
+          className={`py-3 rounded-xl transition-all flex items-center justify-center space-x-2 btn-interactive ${
+            loginMode === 'strava'
+              ? 'bg-[#FC4C02] text-white shadow-lg shadow-[#FC4C02]/30 font-black'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Zap className="w-4 h-4 fill-white" />
+          <span>Strava OAuth 2.0 (Khuyên dùng)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setLoginMode('password')}
+          className={`py-3 rounded-xl transition-all flex items-center justify-center space-x-2 btn-interactive ${
+            loginMode === 'password'
+              ? 'bg-[#00BCEB] text-slate-950 shadow-lg shadow-[#00BCEB]/30 font-black'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Lock className="w-4 h-4" />
+          <span>Email & Mật Khẩu</span>
+        </button>
+      </div>
+
+      {/* Tab 1: Strava Direct Auth */}
+      {loginMode === 'strava' ? (
+        <div className="space-y-5 pt-2 relative z-10">
+          <div className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800/90 space-y-3">
+            <div className="flex items-center space-x-2 text-[#FC4C02] font-bold text-xs">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Lợi ích khi đăng nhập qua Strava:</span>
+            </div>
+            <ul className="text-xs text-slate-300 space-y-2 pl-6 list-disc">
+              <li>Tự động lấy log Chạy bộ, Đạp xe, Đi bộ, Bơi lội từ đồng hồ / ứng dụng.</li>
+              <li>Hệ thống tự động quy đổi thành tích sang điểm xếp hạng Cisco.</li>
+              <li>Tài khoản khởi tạo tự động gán vai trò <strong className="text-[#CCFF00]">Vận Động Viên (Member)</strong>.</li>
+            </ul>
+          </div>
+
+          <a
+            href="/api/strava/auth"
+            className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-[#FC4C02] via-orange-500 to-[#FC4C02] hover:opacity-95 text-white font-black text-sm uppercase tracking-wider shadow-xl shadow-[#FC4C02]/25 transition-all flex items-center justify-center space-x-2.5 btn-interactive"
+          >
+            <Zap className="w-5 h-5 fill-white animate-bounce" />
+            <span>Đăng Nhập Ngay bằng Strava</span>
+          </a>
+        </div>
+      ) : (
+        /* Tab 2: Email & Password Login */
+        <form onSubmit={handlePasswordLogin} className="space-y-4 pt-2 relative z-10">
+          {loginError && (
+            <div className="p-3.5 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs font-bold text-center">
+              {loginError}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-extrabold text-slate-300 uppercase tracking-wider mb-1.5">
+              Username hoặc Email Cisco
+            </label>
+            <div className="relative">
+              <Mail className="w-4.5 h-4.5 text-[#00BCEB] absolute left-3.5 top-3.5" />
+              <input
+                type="text"
+                required
+                value={identity}
+                onChange={(e) => setIdentity(e.target.value)}
+                placeholder="Ví dụ: tommy.tran@cisco.com hoặc minh.nguyen"
+                className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white text-sm focus:outline-none focus:border-[#00BCEB] transition-colors"
+              />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-extrabold text-slate-300 uppercase tracking-wider">
+                Mật Khẩu Đăng Nhập
+              </label>
+            </div>
+
+            <div className="relative">
+              <Lock className="w-4.5 h-4.5 text-[#00BCEB] absolute left-3.5 top-3.5" />
+              <input
+                type={showPass ? 'text' : 'password'}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full pl-10 pr-12 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white text-sm focus:outline-none focus:border-[#00BCEB] transition-colors"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPass(!showPass)}
+                className="absolute right-3.5 top-3 text-slate-400 hover:text-white p-1 rounded transition-colors"
+                title={showPass ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+              >
+                {showPass ? <EyeOff className="w-4.5 h-4.5 text-[#CCFF00]" /> : <Eye className="w-4.5 h-4.5" />}
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#00BCEB] to-cyan-500 hover:from-cyan-500 hover:to-[#00BCEB] text-slate-950 font-black text-sm uppercase tracking-wider shadow-lg shadow-[#00BCEB]/20 transition-all flex items-center justify-center space-x-2 btn-interactive"
+          >
+            <LogIn className="w-4 h-4" />
+            <span>Đăng Nhập Vào Hồ Sơ VĐV</span>
+          </button>
+        </form>
+      )}
+
+      {/* Saved Accounts History Bar */}
+      {savedAccounts.length > 0 && (
+        <div className="pt-4 border-t border-slate-800/80 space-y-2.5 relative z-10">
+          <div className="flex items-center justify-between text-[11px] font-bold text-slate-400">
+            <span>Tài khoản đã đăng nhập gần đây trên trình duyệt này:</span>
+            <span className="text-slate-500">Nhấp để vào lại</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {savedAccounts.map((p) => (
+              <div
+                key={p.id}
+                onClick={() => {
+                  setCurrentUser(p);
+                  if (typeof window !== 'undefined') {
+                    localStorage.setItem('cisco_sport_user', JSON.stringify(p));
+                    saveToSavedAccounts(p);
+                  }
+                }}
+                className="p-2.5 rounded-2xl bg-slate-950/80 hover:bg-slate-900 border border-slate-800 hover:border-[#00BCEB]/50 cursor-pointer transition-all flex items-center justify-between group btn-interactive"
+              >
+                <div className="flex items-center space-x-2.5 min-w-0 flex-1">
+                  <img src={p.avatar_url} alt={p.full_name} className="w-8 h-8 rounded-full object-cover border border-slate-700 group-hover:border-[#00BCEB]" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-bold text-white group-hover:text-[#00BCEB] truncate">{p.full_name}</p>
+                    <p className="text-[9px] text-slate-400 truncate">{p.email || p.username}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => removeSavedAccount(p.id, e)}
+                  className="p-1 text-slate-500 hover:text-rose-400 rounded-lg transition-colors ml-1"
+                  title="Xóa khỏi lịch sử trình duyệt"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ProfilePage() {
-  const { currentUser, activities, setShowOnboardingModal, refreshData, logout, t } = useApp();
+  const { currentUser, setCurrentUser, profiles, activities, setShowOnboardingModal, refreshData, logout, t } = useApp();
   const [selectedCert, setSelectedCert] = useState<Certificate | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [debugOutput, setDebugOutput] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  
+
   // State Bộ Lọc Thời Gian
   type TimeFilterType = 'all' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
   const [timeFilter, setTimeFilter] = useState<TimeFilterType>('all');
@@ -26,28 +291,10 @@ export default function ProfilePage() {
   } | null>(null);
 
   if (!currentUser) {
-    return (
-      <div className="max-w-md mx-auto my-20 p-8 glass-panel text-center rounded-3xl space-y-6 shadow-2xl border border-slate-800">
-        <div className="w-16 h-16 mx-auto rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400">
-          <User className="w-8 h-8" />
-        </div>
-        <div className="space-y-2">
-          <h2 className="text-2xl font-extrabold text-[#FFFFFF]">Chưa Đăng Nhập</h2>
-          <p className="text-sm text-slate-400">Vui lòng đăng nhập bằng tài khoản Strava để tham gia tính điểm & xếp hạng Cisco.</p>
-        </div>
-        <a
-          href="/api/strava/auth"
-          className="w-full py-3.5 px-6 rounded-2xl bg-[#FC4C02] hover:bg-[#e04300] text-white font-extrabold text-sm shadow-lg shadow-[#FC4C02]/20 transition-all flex items-center justify-center space-x-2 btn-interactive"
-        >
-          <Zap className="w-4 h-4 fill-white" />
-          <span>Đăng Nhập bằng Strava</span>
-        </a>
-      </div>
-    );
+    return <UnauthenticatedLoginForm profiles={profiles} setCurrentUser={setCurrentUser} />;
   }
 
   const isStravaLinked = Boolean(currentUser.strava_id && currentUser.strava_id > 0);
-  const defaultUserPassword = 'Cisco2026$';
 
   const handleManualSync = async () => {
     setIsSyncing(true);
@@ -60,7 +307,7 @@ export default function ProfilePage() {
         const json = await res.json();
         setDebugOutput(JSON.stringify(json, null, 2));
       } else {
-        setDebugOutput('Chưa tìm thấy Strava Token trong trình duyệt. Vui lòng bấm Ủi Quyền bên dưới.');
+        setDebugOutput('Chưa tìm thấy Strava Token trong trình duyệt. Vui lòng bấm Ủy Quyền bên dưới.');
       }
     } catch (e: any) {
       console.error(e);
@@ -247,7 +494,7 @@ export default function ProfilePage() {
                   className="w-full px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition-colors btn-interactive flex items-center justify-center space-x-1"
                 >
                   <RefreshCw className="w-3.5 h-3.5 text-[#00BCEB]" />
-                  <span>Cập Nhật Token</span>
+                  <span>Cập Nhật Strava</span>
                 </a>
               </>
             ) : (
@@ -269,37 +516,21 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* THÔNG TIN TÀI KHOẢN & MẬT KHẨU MẶC ĐỊNH CARD */}
-        <div className="mt-6 pt-5 border-t border-slate-800/80 grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
+        {/* THÔNG TIN TÀI KHOẢN CARD */}
+        <div className="mt-6 pt-5 border-t border-slate-800/80 grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
           <div>
             <span className="text-[10px] uppercase font-bold text-slate-400 block">Tài Khoản Đăng Nhập</span>
             <span className="text-sm font-bold text-white block mt-0.5 truncate">{currentUser.email || currentUser.username}</span>
           </div>
 
           <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 block">Mật Khẩu Đăng Nhập Mặc Định</span>
-            <div className="flex items-center space-x-2 mt-0.5">
-              <span className="font-mono font-bold text-[#CCFF00] text-sm">
-                {showPassword ? defaultUserPassword : '••••••••••••'}
-              </span>
-              <button
-                onClick={() => setShowPassword(!showPassword)}
-                className="p-1 text-slate-400 hover:text-white transition-colors"
-                title={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-              >
-                {showPassword ? <EyeOff className="w-4 h-4 text-[#CCFF00]" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 block">Quyền Hạn Mặc Định</span>
+            <span className="text-[10px] uppercase font-bold text-slate-400 block">Quyền Hạn Hệ Thống</span>
             <span className="text-xs font-bold text-slate-200 block mt-1 capitalize">
               {currentUser.role === 'admin'
-                ? ' Ban Tổ Chức / Admin'
+                ? '👑 Ban Tổ Chức / Admin'
                 : currentUser.role === 'captain'
-                ? ' Đội Trưởng Team'
-                : '🏃 Vận Động Viên (Default)'}
+                ? '🏆 Đội Trưởng Team'
+                : '🏃 Vận Động Viên (Member)'}
             </span>
           </div>
         </div>
@@ -330,14 +561,14 @@ export default function ProfilePage() {
             { id: 'month', label: '📆 Tháng Này' },
             { id: 'quarter', label: '📊 Quý Này' },
             { id: 'year', label: '🏆 Năm 2026' },
-            { id: 'custom', label: '🗓️ Tùy Chỉnh...' },
+            { id: 'custom', label: '⚙️ Khoảng Tùy Chọn' },
           ].map((item) => (
             <button
               key={item.id}
               onClick={() => setTimeFilter(item.id as TimeFilterType)}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all btn-interactive ${
                 timeFilter === item.id
-                  ? 'bg-[#00BCEB] text-slate-950 font-black shadow-lg shadow-[#00BCEB]/20 scale-105'
+                  ? 'bg-[#00BCEB] text-slate-950 shadow-md shadow-[#00BCEB]/20'
                   : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
               }`}
             >
@@ -346,399 +577,186 @@ export default function ProfilePage() {
           ))}
         </div>
 
-        {/* Custom Date Pickers */}
         {timeFilter === 'custom' && (
-          <div className="flex flex-wrap items-center gap-3 pt-2 bg-slate-950/80 p-3 rounded-2xl border border-slate-800">
-            <div className="flex items-center space-x-2 text-xs text-slate-300">
-              <span>Từ ngày:</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-800">
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Từ ngày</label>
               <input
                 type="date"
                 value={customStart}
                 onChange={(e) => setCustomStart(e.target.value)}
-                className="bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-[#00BCEB]"
+                className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-white text-xs focus:outline-none focus:border-[#00BCEB]"
               />
             </div>
-
-            <div className="flex items-center space-x-2 text-xs text-slate-300">
-              <span>Đến ngày:</span>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Đến ngày</label>
               <input
                 type="date"
                 value={customEnd}
                 onChange={(e) => setCustomEnd(e.target.value)}
-                className="bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-[#00BCEB]"
+                className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-white text-xs focus:outline-none focus:border-[#00BCEB]"
               />
             </div>
-
-            {(customStart || customEnd) && (
-              <button
-                onClick={() => {
-                  setCustomStart('');
-                  setCustomEnd('');
-                }}
-                className="text-xs text-slate-400 hover:text-white underline"
-              >
-                Xóa mốc ngày
-              </button>
-            )}
           </div>
         )}
       </div>
 
-      {/* Personal Stats Metrics */}
+      {/* TỔNG QUAN THÀNH TÍCH (Overall Stats Summary Grid) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="glass-card p-5 rounded-2xl border border-slate-800 text-center">
-          <p className="text-xs text-slate-400 font-medium">{t('profile', 'totalDistance')}</p>
-          <p className="text-2xl font-extrabold text-[#CCFF00] mt-1">{(totalDistMeters / 1000).toFixed(1)} <span className="text-xs font-normal text-slate-400">km</span></p>
-        </div>
-        <div className="glass-card p-5 rounded-2xl border border-slate-800 text-center">
-          <p className="text-xs text-slate-400 font-medium">{t('profile', 'totalPoints')}</p>
-          <p className="text-2xl font-extrabold text-[#FC4C02] mt-1">{totalPoints.toFixed(1)} <span className="text-xs font-normal text-slate-400">pts</span></p>
-        </div>
-        <div className="glass-card p-5 rounded-2xl border border-slate-800 text-center">
-          <p className="text-xs text-slate-400 font-medium">{t('profile', 'totalElevation')}</p>
-          <p className="text-2xl font-extrabold text-[#00BCEB] mt-1">{Math.round(totalElevation).toLocaleString('vi-VN')} <span className="text-xs font-normal text-slate-400">m</span></p>
-        </div>
-        <div className="glass-card p-5 rounded-2xl border border-slate-800 text-center">
-          <p className="text-xs text-slate-400 font-medium">{t('profile', 'totalWorkouts')}</p>
-          <p className="text-2xl font-extrabold text-emerald-400 mt-1">{userActivities.length} <span className="text-xs font-normal text-slate-400">lần</span></p>
-        </div>
-      </div>
-
-      {/* BIỂU ĐỒ PHÂN BỐ THỜI GIAN THEO MÔN THỂ THAO */}
-      <div className="glass-panel p-6 rounded-3xl border border-slate-800 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
-          <div className="space-y-1">
-            <div className="flex items-center space-x-2">
-              <PieChart className="w-5 h-5 text-[#CCFF00]" />
-              <h2 className="text-lg font-extrabold text-white">Biểu Đồ Phân Bổ Thời Gian Theo Môn</h2>
-            </div>
-            <p className="text-xs text-slate-400">Tỷ lệ thời gian vận động (Moving Time) phân bổ theo từng bộ môn thể thao</p>
-          </div>
-
-          <div className="px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center space-x-2 text-xs">
-            <Clock className="w-4 h-4 text-[#00BCEB]" />
-            <span className="text-slate-400">Tổng thời gian:</span>
-            <strong className="text-[#CCFF00] font-bold">{formatDuration(totalMovingTimeSec)}</strong>
-          </div>
+        <div className="glass-panel p-5 rounded-3xl border border-slate-800 text-center space-y-1">
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Tổng Cự Ly</p>
+          <p className="text-2xl font-black text-[#CCFF00]">{(totalDistMeters / 1000).toFixed(1)} <span className="text-xs font-normal text-slate-400">km</span></p>
         </div>
 
-        {/* Multi-Segment Stacked Bar Chart */}
-        <div className="space-y-2">
-          <div className="flex justify-between text-xs text-slate-400 font-medium">
-            <span>Tỷ lệ phân bổ tổng thể (100%)</span>
-            <span>{userActivities.length} bài tập</span>
-          </div>
-
-          <div className="h-6 w-full bg-slate-950 rounded-2xl overflow-hidden p-1 flex border border-slate-800 shadow-inner">
-            {groupedStats.map((cat) => {
-              if (cat.timePercent <= 0) return null;
-              return (
-                <div
-                  key={cat.type}
-                  style={{ width: `${cat.timePercent}%` }}
-                  className={`h-full ${cat.barColor} transition-all duration-500 first:rounded-l-xl last:rounded-r-xl relative group cursor-pointer`}
-                  title={`${cat.name}: ${cat.timePercent.toFixed(1)}% (${formatDuration(cat.timeSec)})`}
-                >
-                  {cat.timePercent > 8 && (
-                    <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-slate-950 truncate px-1">
-                      {cat.timePercent.toFixed(0)}%
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-            {totalMovingTimeSec === 0 && (
-              <div className="h-full w-full bg-slate-900 flex items-center justify-center text-[10px] text-slate-500 font-bold">
-                Chưa có dữ liệu thời gian trong khoảng chọn
-              </div>
-            )}
-          </div>
+        <div className="glass-panel p-5 rounded-3xl border border-slate-800 text-center space-y-1">
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Tổng Điểm Thưởng</p>
+          <p className="text-2xl font-black text-[#FC4C02]">+{totalPoints.toFixed(1)} <span className="text-xs font-normal text-[#FC4C02]/70">pts</span></p>
         </div>
 
-        {/* Sport Breakdown Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-          {groupedStats.map((cat) => (
-            <div
-              key={cat.type}
-              className={`p-4 rounded-2xl bg-slate-900/80 border ${cat.count > 0 ? cat.border : 'border-slate-800/50 opacity-60'} space-y-3 transition-all hover:bg-slate-900`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-extrabold text-sm text-white">{cat.name}</span>
-                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black bg-slate-950 border border-slate-800 ${cat.badge}`}>
-                  {cat.timePercent.toFixed(1)}%
-                </span>
-              </div>
+        <div className="glass-panel p-5 rounded-3xl border border-slate-800 text-center space-y-1">
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Độ Cao Leo Dốc</p>
+          <p className="text-2xl font-black text-slate-200">{Math.round(totalElevation)} <span className="text-xs font-normal text-slate-500">m</span></p>
+        </div>
 
-              {/* Progress bar per sport */}
-              <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-                <div
-                  className={`h-full ${cat.barColor} rounded-full transition-all duration-500`}
-                  style={{ width: `${cat.timePercent}%` }}
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-1 text-center pt-1 border-t border-slate-800/60 text-[11px]">
-                <div>
-                  <span className="text-[10px] text-slate-500 block">Thời gian</span>
-                  <strong className="text-white font-bold">{formatDuration(cat.timeSec)}</strong>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 block">Quãng đường</span>
-                  <strong className="text-[#CCFF00] font-bold">{cat.km} km</strong>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 block">Leo dốc</span>
-                  <strong className="text-[#00BCEB] font-bold">{cat.elevGain} m</strong>
-                </div>
-              </div>
-            </div>
-          ))}
+        <div className="glass-panel p-5 rounded-3xl border border-slate-800 text-center space-y-1">
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Thời Gian Di Chuyển</p>
+          <p className="text-2xl font-black text-[#00BCEB]">{formatDuration(totalMovingTimeSec)}</p>
         </div>
       </div>
 
-      {/* THỐNG KÊ GỌN THEO CHỦNG LOẠI MÔN THỂ THAO (Grouped Activity Summaries) */}
-      <div className="glass-panel p-6 rounded-3xl border border-slate-800 space-y-4">
+      {/* PHÂN LOẠI & THỐNG KÊ CHI TIẾT THEO MÔN THỂ THAO */}
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-extrabold text-lg text-white flex items-center gap-2">
-            <ListFilter className="w-5 h-5 text-[#00BCEB]" />
-            <span>Phân Loại Theo Chủng Loại Thể Thao ({activeGroupedStats.length} Bộ Môn)</span>
+          <h2 className="font-extrabold text-xl text-white flex items-center gap-2">
+            <PieChart className="w-5 h-5 text-[#00BCEB]" />
+            <span>Phân Loại & Thống Kê Theo Môn Thể Thao</span>
           </h2>
-
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={handleManualSync}
-              disabled={isSyncing}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-[#00BCEB] border border-slate-700 text-xs font-bold transition-all"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-              <span>{isSyncing ? 'Đang đồng bộ...' : 'Cập Nhật Lịch Sử'}</span>
-            </button>
-          </div>
+          <span className="text-xs text-slate-400">Nhấp vào thẻ môn để xem toàn bộ danh sách bài tập</span>
         </div>
 
-        {/* Live Debug Result Box */}
-        {debugOutput && (
-          <div className="p-4 rounded-2xl bg-slate-950 border border-cyan-500/40 text-left space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#00BCEB] flex items-center gap-1.5">
-                <Bug className="w-4 h-4 text-[#CCFF00]" />
-                KẾT QUẢ PHẢN HỒI TỪ STRAVA API (DEBUG):
-              </span>
-              <button onClick={() => setDebugOutput(null)} className="text-slate-400 hover:text-white text-xs">
-                ✕ Đóng
-              </button>
-            </div>
-            <pre className="text-[11px] font-mono text-emerald-400 bg-slate-900 p-3 rounded-xl overflow-x-auto max-h-60 border border-slate-800">
-              {debugOutput}
-            </pre>
-          </div>
-        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {groupedStats.map((cat) => {
+            const hasData = cat.count > 0;
 
-        {userActivities.length === 0 ? (
-          <div className="p-8 rounded-2xl bg-slate-950/80 border border-slate-800 text-center space-y-4">
-            <Activity className="w-10 h-10 text-slate-600 mx-auto" />
-            <div className="space-y-1">
-              <h3 className="text-base font-bold text-white">Chưa ghi nhận bài tập nào từ Strava</h3>
-              <p className="text-xs text-slate-400 max-w-md mx-auto">
-                Nếu bạn vừa kết nối Strava lần đầu, vui lòng nhấn nút bên dưới để cấp quyền đọc toàn bộ bài tập và tải dữ liệu vận động mới nhất về ứng dụng.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              <a
-                href="/api/strava/auth"
-                className="inline-flex items-center space-x-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#FC4C02] to-[#ff6a26] text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-[#FC4C02]/20 hover:opacity-95 transition-all btn-interactive"
+            return (
+              <div
+                key={cat.type}
+                onClick={() => {
+                  if (hasData) {
+                    setActiveCategoryModal({
+                      type: cat.type,
+                      name: cat.name,
+                      list: cat.list,
+                    });
+                  }
+                }}
+                className={`glass-card p-5 rounded-3xl border transition-all ${cat.border} bg-gradient-to-b ${cat.color} ${
+                  hasData ? 'cursor-pointer hover:scale-[1.02] hover:shadow-xl' : 'opacity-60'
+                }`}
               >
-                <Zap className="w-4 h-4 fill-white" />
-                <span>Ủy Quyền & Tải Dữ Liệu Strava Ngay</span>
-              </a>
-
-              <button
-                onClick={handleManualSync}
-                className="inline-flex items-center space-x-2 px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-[#00BCEB] font-bold text-xs border border-slate-700 transition-all btn-interactive"
-              >
-                <Bug className="w-4 h-4 text-[#CCFF00]" />
-                <span>Chẩn Đoán Kết Nối Strava (Debug)</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {groupedStats
-              .filter((item) => item.count > 0)
-              .map((cat) => (
-                <div
-                  key={cat.type}
-                  className={`p-5 rounded-3xl bg-gradient-to-br ${cat.color} border ${cat.border} space-y-4 shadow-lg hover:scale-[1.01] transition-all`}
-                >
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-extrabold text-base text-white">{cat.name}</h3>
-                    <span className="px-2.5 py-1 rounded-full bg-slate-900/80 text-xs font-bold text-slate-300 border border-slate-800">
-                      {cat.count} bài tập
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 bg-slate-950/70 p-3 rounded-2xl border border-slate-800/80 text-center">
-                    <div>
-                      <p className="text-[10px] text-slate-400 font-medium">Tổng cự ly</p>
-                      <p className={`font-black text-lg ${cat.badge} mt-0.5`}>
-                        {cat.km} <span className="text-[10px] font-normal text-slate-400">km</span>
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-slate-400 font-medium">Tổng điểm</p>
-                      <p className="font-black text-lg text-white mt-0.5">
-                        +{cat.points} <span className="text-[10px] font-normal text-slate-400">pts</span>
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => setActiveCategoryModal({ type: cat.type, name: cat.name, list: cat.list })}
-                    className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs transition-colors flex items-center justify-center space-x-1.5 btn-interactive border border-slate-800"
-                  >
-                    <Eye className="w-3.5 h-3.5 text-[#00BCEB]" />
-                    <span>Xem Chi Tiết Tất Cả ({cat.count}) ➔</span>
-                  </button>
-                </div>
-              ))}
-          </div>
-        )}
-      </div>
-
-      {/* CHỨNG CHỈ & THÀNH TÍCH ĐIỆN TỬ (Certificates Section) */}
-      <div className="glass-panel p-6 rounded-3xl border border-slate-800 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-extrabold text-lg text-white flex items-center gap-2">
-            <Shield className="w-5 h-5 text-[#CCFF00]" />
-            <span>{t('profile', 'certTitle')} ({currentUser.certificates?.length || 0})</span>
-          </h2>
-          <span className="text-xs text-[#00BCEB] font-bold">Cấp bởi Ban Tổ Chức Cisco GSC</span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {(currentUser.certificates || []).map((cert) => (
-            <div
-              key={cert.id}
-              onClick={() => setSelectedCert(cert)}
-              className="p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950 border border-amber-500/30 hover:border-amber-400/60 shadow-lg cursor-pointer transition-all duration-300 group btn-interactive"
-            >
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[10px] font-black uppercase">
-                    CHỨNG CHỈ THỂ THAO
+                <div className="flex items-center justify-between">
+                  <span className={`font-black text-base ${cat.badge}`}>{cat.name}</span>
+                  <span className="px-2.5 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-xs font-bold text-white">
+                    {cat.count} bài tập
                   </span>
-                  <h3 className="font-bold text-base text-white group-hover:text-[#CCFF00] transition-colors">{cert.title}</h3>
-                  <p className="text-xs text-slate-400">{cert.achievement_detail}</p>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-400/40 flex items-center justify-center text-amber-400 text-lg font-black group-hover:scale-110 transition-transform">
-                  📜
-                </div>
-              </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
-                <span>Ngày cấp: {cert.issue_date}</span>
-                <span className="text-[#00BCEB] font-semibold underline group-hover:text-[#CCFF00]">Xem Bằng Khen ➔</span>
+                <div className="mt-4 grid grid-cols-3 gap-2 text-center bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80">
+                  <div>
+                    <p className="text-[9px] text-slate-400 uppercase font-bold">Cự ly</p>
+                    <p className="font-black text-sm text-[#CCFF00] mt-0.5">{cat.km} km</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-slate-400 uppercase font-bold">Điểm</p>
+                    <p className="font-black text-sm text-[#FC4C02] mt-0.5">+{cat.points}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-slate-400 uppercase font-bold">Thời gian</p>
+                    <p className="font-bold text-sm text-slate-200 mt-0.5">{formatDuration(cat.timeSec)}</p>
+                  </div>
+                </div>
+
+                {/* Thanh tỉ lệ % thời gian tập luyện */}
+                <div className="mt-4 space-y-1.5">
+                  <div className="flex justify-between text-[11px] font-bold">
+                    <span className="text-slate-400">Tỉ lệ phân bổ thời gian</span>
+                    <span className={cat.badge}>{cat.timePercent.toFixed(1)}%</span>
+                  </div>
+                  <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden">
+                    <div className={`h-full ${cat.barColor} transition-all duration-500`} style={{ width: `${cat.timePercent}%` }}></div>
+                  </div>
+                </div>
+
+                {hasData && (
+                  <div className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs font-bold text-slate-300 group-hover:text-white">
+                    <span>Xem chi tiết danh sách {cat.count} bài tập</span>
+                    <ChevronRight className="w-4 h-4 text-[#00BCEB]" />
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* MODAL DANH SÁCH BÀI TẬP CHI TIẾT KHI NHẤP CHI TIẾT MÔN THỂ THAO */}
+      {/* MODAL XEM CHI TIẾT DANH SÁCH BÀI TẬP THEO MÔN */}
       {activeCategoryModal && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-2xl w-full space-y-6 shadow-2xl relative overflow-hidden max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-              <div>
-                <span className="text-[10px] font-extrabold text-[#00BCEB] uppercase tracking-wider">DANH SÁCH CHI TIẾT BÀI TẬP</span>
-                <h3 className="font-extrabold text-xl text-white mt-0.5">{activeCategoryModal.name}</h3>
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
+            <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-950/80">
+              <div className="space-y-1">
+                <h3 className="font-extrabold text-xl text-white flex items-center gap-2">
+                  <span>{activeCategoryModal.name}</span>
+                </h3>
+                <p className="text-xs text-slate-400">Tổng cộng {activeCategoryModal.list.length} bài tập đã hoàn thành</p>
               </div>
 
               <button
                 onClick={() => setActiveCategoryModal(null)}
-                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-sm"
+                className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition-colors"
               >
                 ✕
               </button>
             </div>
 
-            {/* Scrollable Workout List */}
-            <div className="overflow-y-auto space-y-3 pr-1 flex-1">
+            <div className="p-6 overflow-y-auto space-y-3 flex-1">
               {activeCategoryModal.list.map((act) => (
-                <div key={act.id} className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between hover:border-slate-700 transition-colors">
+                <div
+                  key={act.id}
+                  className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:border-slate-700 transition-colors"
+                >
                   <div className="space-y-1">
-                    <h4 className="font-bold text-sm text-white">{act.name}</h4>
-                    <p className="text-xs text-slate-400">
-                      📅 {new Date(act.start_date).toLocaleDateString('vi-VN')} • ⏱️ {Math.floor(act.moving_time / 60)} phút • 🏔️ Leo dốc: {act.total_elevation_gain || 0}m
+                    <p className="font-bold text-white text-sm">{act.name}</p>
+                    <p className="text-xs text-slate-400 flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                      <span>{new Date(act.start_date).toLocaleString('vi-VN')}</span>
                     </p>
                   </div>
 
-                  <div className="text-right">
-                    <span className="font-extrabold text-base text-[#CCFF00]">
-                      {(act.distance / 1000).toFixed(2)} km
-                    </span>
-                    <p className="text-xs font-bold text-[#FC4C02]">+{act.calculated_points} pts</p>
+                  <div className="grid grid-cols-3 gap-3 text-right bg-slate-900 p-2.5 rounded-xl border border-slate-800 w-full sm:w-auto">
+                    <div>
+                      <p className="text-[9px] text-slate-400 uppercase font-bold">Cự ly</p>
+                      <p className="font-extrabold text-xs text-[#CCFF00]">{(act.distance / 1000).toFixed(2)} km</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] text-slate-400 uppercase font-bold">Thời gian</p>
+                      <p className="font-bold text-xs text-slate-300">{formatDuration(act.moving_time || act.elapsed_time)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] text-slate-400 uppercase font-bold">Điểm</p>
+                      <p className="font-extrabold text-xs text-[#FC4C02]">+{act.calculated_points}</p>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="pt-2 border-t border-slate-800 text-right">
+            <div className="p-4 border-t border-slate-800 bg-slate-950/80 flex justify-end">
               <button
                 onClick={() => setActiveCategoryModal(null)}
-                className="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs"
-              >
-                Đóng Màn Hình
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL POPUP CHỨNG CHỈ VINH DANH (Digital Certificate Viewer) */}
-      {selectedCert && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-950 border-2 border-amber-500/60 rounded-3xl p-6 sm:p-8 max-w-xl w-full space-y-6 shadow-2xl relative overflow-hidden text-center">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
-            {/* Header Badge */}
-            <div className="space-y-2">
-              <span className="px-4 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-black uppercase tracking-widest">
-                CISCO GSC VIETNAM ATHLETIC CERTIFICATE
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 uppercase tracking-wide">
-                BẰNG KHEN THÀNH TÍCH
-              </h2>
-            </div>
-
-            {/* Certificate Body */}
-            <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-4">
-              <p className="text-xs uppercase text-slate-400 font-bold tracking-wider">Chứng nhận Vận động viên</p>
-              <h3 className="text-2xl font-black text-white">{selectedCert.recipient_name}</h3>
-              <p className="text-sm font-semibold text-[#CCFF00]">{selectedCert.title}</p>
-              <div className="py-3 px-4 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300">
-                {selectedCert.achievement_detail}
-              </div>
-              <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800">
-                <span>Ngày cấp: {selectedCert.issue_date}</span>
-                <span className="text-[#00BCEB] font-bold">{selectedCert.verified_by}</span>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center justify-center space-x-3 pt-2">
-              <button
-                onClick={() => setSelectedCert(null)}
-                className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs"
+                className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition-colors"
               >
                 Đóng
-              </button>
-              <button
-                onClick={() => alert('Đã lưu Bằng Khen Thể Thao thành công!')}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-amber-500/20 hover:opacity-95 transition-all"
-              >
-                Tải Bằng Khen (PDF HD)
               </button>
             </div>
           </div>

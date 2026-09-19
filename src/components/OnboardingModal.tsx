@@ -204,15 +204,14 @@ export const OnboardingModal: React.FC = () => {
 
           {/* Password (for password reset) */}
           <div>
-            <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Mật Khẩu Mặc Định (Đăng Nhập Web)</label>
+            <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Mật Khẩu Đăng Nhập Web</label>
             <div className="relative">
               <Lock className="w-4 h-4 text-[#00BCEB] absolute left-3 top-3" />
               <input
                 type={showPassword ? 'text' : 'password'}
-                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Cisco2026$"
+                placeholder="••••••••"
                 className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-[#00BCEB]"
               />
               <button
@@ -224,7 +223,7 @@ export const OnboardingModal: React.FC = () => {
                 {showPassword ? <EyeOff className="w-4 h-4 text-[#CCFF00]" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">Mật khẩu mặc định là <strong className="text-[#CCFF00]">Cisco2026$</strong>. Bạn có thể sửa thành mật khẩu riêng.</p>
+            <p className="text-[11px] text-slate-400 mt-1">Tạo mật khẩu cá nhân để đăng nhập thuận tiện hơn.</p>
           </div>
 
           {/* Team Selection */}
