@@ -37,7 +37,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isDemoMode, setDemoMode] = useState<boolean>(true);
+  const [isDemoMode, setDemoMode] = useState<boolean>(false);
   const [language, setLanguage] = useState<Language>('vi');
   const [rules, setRules] = useState<SportRule[]>(DEFAULT_SPORT_RULES);
   const [teams, setTeams] = useState<Team[]>(DEMO_TEAMS);
