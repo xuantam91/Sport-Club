@@ -2,13 +2,14 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { User, Shield, Activity, CheckCircle2, Building, Mail, Settings, RefreshCw, Zap } from 'lucide-react';
+import { User, Shield, Activity, CheckCircle2, Building, Mail, Settings, RefreshCw, Zap, Bug } from 'lucide-react';
 import { Certificate } from '@/types';
 
 export default function ProfilePage() {
-  const { currentUser, activities, setShowOnboardingModal, refreshData, t } = useApp();
+  const { currentUser, activities, setShowOnboardingModal, refreshData, syncStravaActivities, t } = useApp();
   const [selectedCert, setSelectedCert] = useState<Certificate | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [debugOutput, setDebugOutput] = useState<string | null>(null);
 
   if (!currentUser) {
     return (
@@ -22,10 +23,20 @@ export default function ProfilePage() {
 
   const handleManualSync = async () => {
     setIsSyncing(true);
+    setDebugOutput(null);
     try {
       await refreshData();
-    } catch (e) {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('cisco_strava_token') : null;
+      if (token) {
+        const res = await fetch(`/api/strava/user-activities?token=${encodeURIComponent(token)}`);
+        const json = await res.json();
+        setDebugOutput(JSON.stringify(json, null, 2));
+      } else {
+        setDebugOutput('Chưa tìm thấy Strava Token trong trình duyệt. Vui lòng bấm Ủy Quyền bên dưới.');
+      }
+    } catch (e: any) {
       console.error(e);
+      setDebugOutput(`Lỗi đồng bộ: ${e.message || String(e)}`);
     } finally {
       setIsSyncing(false);
     }
@@ -182,15 +193,35 @@ export default function ProfilePage() {
             <span>{t('profile', 'historyTitle')} ({userActivities.length})</span>
           </h2>
 
-          <button
-            onClick={handleManualSync}
-            disabled={isSyncing}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-[#00BCEB] border border-slate-700 text-xs font-bold transition-all"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-            <span>{isSyncing ? 'Đang đồng bộ...' : 'Cập Nhật Lịch Sử'}</span>
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleManualSync}
+              disabled={isSyncing}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-[#00BCEB] border border-slate-700 text-xs font-bold transition-all"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'Đang đồng bộ...' : 'Cập Nhật Lịch Sử'}</span>
+            </button>
+          </div>
         </div>
+
+        {/* Live Debug Result Box */}
+        {debugOutput && (
+          <div className="p-4 rounded-2xl bg-slate-950 border border-cyan-500/40 text-left space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[#00BCEB] flex items-center gap-1.5">
+                <Bug className="w-4 h-4 text-[#CCFF00]" />
+                KẾT QUẢ PHẢN HỒI TỪ STRAVA API (DEBUG):
+              </span>
+              <button onClick={() => setDebugOutput(null)} className="text-slate-400 hover:text-white text-xs">
+                ✕ Đóng
+              </button>
+            </div>
+            <pre className="text-[11px] font-mono text-emerald-400 bg-slate-900 p-3 rounded-xl overflow-x-auto max-h-60 border border-slate-800">
+              {debugOutput}
+            </pre>
+          </div>
+        )}
 
         {userActivities.length === 0 ? (
           <div className="p-8 rounded-2xl bg-slate-950/80 border border-slate-800 text-center space-y-4">
@@ -202,13 +233,23 @@ export default function ProfilePage() {
               </p>
             </div>
 
-            <a
-              href="/api/strava/auth"
-              className="inline-flex items-center space-x-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#FC4C02] to-[#ff6a26] text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-[#FC4C02]/20 hover:opacity-95 transition-all btn-interactive"
-            >
-              <Zap className="w-4 h-4 fill-white" />
-              <span>Ủy Quyền & Tải Dữ Liệu Strava Ngay</span>
-            </a>
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+              <a
+                href="/api/strava/auth"
+                className="inline-flex items-center space-x-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#FC4C02] to-[#ff6a26] text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-[#FC4C02]/20 hover:opacity-95 transition-all btn-interactive"
+              >
+                <Zap className="w-4 h-4 fill-white" />
+                <span>Ủy Quyền & Tải Dữ Liệu Strava Ngay</span>
+              </a>
+
+              <button
+                onClick={handleManualSync}
+                className="inline-flex items-center space-x-2 px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-[#00BCEB] font-bold text-xs border border-slate-700 transition-all btn-interactive"
+              >
+                <Bug className="w-4 h-4 text-[#CCFF00]" />
+                <span>Chẩn Đoán Kết Nối Strava (Debug)</span>
+              </button>
+            </div>
           </div>
         ) : (
           <div className="space-y-3">
