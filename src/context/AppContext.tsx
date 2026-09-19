@@ -162,26 +162,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       participant_ids: currentUser ? [currentUser.id] : [],
       status: 'active',
     };
-    setChallenges((prev) => [newCh, ...prev]);
+    setChallenges((prev) => {
+      const updated = [newCh, ...prev];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cisco_sport_challenges', JSON.stringify(updated));
+      }
+      return updated;
+    });
     return newCh;
   };
 
   const updateChallenge = (id: string, updatedData: Partial<Challenge>) => {
-    setChallenges((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, ...updatedData } : c))
-    );
+    setChallenges((prev) => {
+      const updated = prev.map((c) => (c.id === id ? { ...c, ...updatedData } : c));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cisco_sport_challenges', JSON.stringify(updated));
+      }
+      return updated;
+    });
   };
 
   const joinChallenge = (challengeId: string) => {
     if (!currentUser) return;
-    setChallenges((prev) =>
-      prev.map((c) => {
+    setChallenges((prev) => {
+      const updated = prev.map((c) => {
         if (c.id === challengeId && !c.participant_ids.includes(currentUser.id)) {
           return { ...c, participant_ids: [...c.participant_ids, currentUser.id] };
         }
         return c;
-      })
-    );
+      });
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cisco_sport_challenges', JSON.stringify(updated));
+      }
+      return updated;
+    });
   };
 
   const updateMemberRole = (userId: string, role: UserRole) => {
@@ -282,6 +296,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const parsedActivities = JSON.parse(savedActivitiesStr);
           if (Array.isArray(parsedActivities) && parsedActivities.length > 0) {
             setActivities(parsedActivities);
+          }
+        } catch (e) {}
+      }
+
+      const savedChallengesStr = localStorage.getItem('cisco_sport_challenges');
+      if (savedChallengesStr) {
+        try {
+          const parsedChallenges = JSON.parse(savedChallengesStr);
+          if (Array.isArray(parsedChallenges) && parsedChallenges.length > 0) {
+            setChallenges(parsedChallenges);
           }
         } catch (e) {}
       }

@@ -188,14 +188,14 @@ export default function ChallengesPage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent"></div>
 
                 <div className="relative z-10 flex items-center justify-between">
-                  <span className="px-3 py-1 rounded-full bg-slate-900/90 text-xs font-bold text-[#CCFF00] border border-slate-700">
-                    {ch.type === 'Run' ? '🏃 Chạy bộ' : ch.type === 'Ride' ? '🚴 Đạp xe' : ch.type === 'Walk' ? '🚶 Đi bộ' : '🏊 Bơi lội'}
+                  <span className="px-3.5 py-1.5 rounded-full bg-slate-950/95 text-xs font-black text-[#CCFF00] border border-[#CCFF00]/50 shadow-xl backdrop-blur-md">
+                    {ch.type === 'Run' ? '🏃 Chạy bộ' : ch.type === 'Ride' ? '🚴 Đạp xe' : ch.type === 'Walk' ? '🚶 Đi bộ' : ch.type === 'Swim' ? '🏊 Bơi lội' : '🥾 Leo núi'}
                   </span>
 
-                  <span className={`px-3 py-1 rounded-full text-xs font-extrabold uppercase border ${
-                    ch.status === 'active' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' :
-                    ch.status === 'upcoming' ? 'bg-[#00BCEB]/20 text-[#00BCEB] border-[#00BCEB]/40' :
-                    'bg-slate-800 text-slate-400 border-slate-700'
+                  <span className={`px-3.5 py-1.5 rounded-full text-xs font-black uppercase shadow-xl backdrop-blur-md border ${
+                    ch.status === 'active' ? 'bg-slate-950/95 text-emerald-400 border-2 border-emerald-500 shadow-emerald-500/30' :
+                    ch.status === 'upcoming' ? 'bg-slate-950/95 text-[#00F0FF] border-2 border-[#00BCEB] shadow-cyan-500/30' :
+                    'bg-slate-950/95 text-slate-300 border-2 border-slate-600'
                   }`}>
                     {ch.status === 'active' ? '🔴 Đang diễn ra' : ch.status === 'upcoming' ? '⏳ Sắp diễn ra' : '🏁 Đã kết thúc'}
                   </span>
@@ -437,13 +437,13 @@ export default function ChallengesPage() {
 
               <div className="relative z-10 flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <span className="px-3.5 py-1 rounded-full bg-slate-900/90 text-xs font-bold text-[#CCFF00] border border-slate-700">
-                    {selectedChallenge.type === 'Run' ? '🏃 Chạy bộ' : selectedChallenge.type === 'Ride' ? '🚴 Đạp xe' : '🚶 Đi bộ'}
+                  <span className="px-3.5 py-1.5 rounded-full bg-slate-950/95 text-xs font-black text-[#CCFF00] border border-[#CCFF00]/50 shadow-xl backdrop-blur-md">
+                    {selectedChallenge.type === 'Run' ? '🏃 Chạy bộ' : selectedChallenge.type === 'Ride' ? '🚴 Đạp xe' : selectedChallenge.type === 'Walk' ? '🚶 Đi bộ' : selectedChallenge.type === 'Swim' ? '🏊 Bơi lội' : '🥾 Leo núi'}
                   </span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-extrabold uppercase border ${
-                    selectedChallenge.status === 'active' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' :
-                    selectedChallenge.status === 'upcoming' ? 'bg-[#00BCEB]/20 text-[#00BCEB] border-[#00BCEB]/40' :
-                    'bg-slate-800 text-slate-400 border-slate-700'
+                  <span className={`px-3.5 py-1.5 rounded-full text-xs font-black uppercase shadow-xl backdrop-blur-md border ${
+                    selectedChallenge.status === 'active' ? 'bg-slate-950/95 text-emerald-400 border-2 border-emerald-500 shadow-emerald-500/30' :
+                    selectedChallenge.status === 'upcoming' ? 'bg-slate-950/95 text-[#00F0FF] border-2 border-[#00BCEB] shadow-cyan-500/30' :
+                    'bg-slate-950/95 text-slate-300 border-2 border-slate-600'
                   }`}>
                     {selectedChallenge.status === 'active' ? '🔴 Đang diễn ra' : selectedChallenge.status === 'upcoming' ? '⏳ Sắp diễn ra' : '🏁 Đã kết thúc'}
                   </span>
