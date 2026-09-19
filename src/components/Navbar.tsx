@@ -18,7 +18,7 @@ export const Navbar: React.FC = () => {
     { href: '/teams', label: t('nav', 'teams'), icon: Users },
     { href: '/activities', label: t('nav', 'activities'), icon: Activity },
     { href: '/profile', label: t('nav', 'profile'), icon: User },
-    ...(currentUser?.role === 'admin' ? [{ href: '/admin', label: t('nav', 'admin'), icon: ShieldCheck }] : []),
+    ...(currentUser?.role && ['admin', 'organizer'].includes(currentUser.role) ? [{ href: '/admin', label: t('nav', 'admin'), icon: ShieldCheck }] : []),
   ];
 
   return (

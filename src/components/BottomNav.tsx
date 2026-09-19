@@ -16,7 +16,7 @@ export const BottomNav: React.FC = () => {
     { href: '/teams', label: 'Teams', icon: Users },
     { href: '/activities', label: 'Hoạt Động', icon: Activity },
     { href: '/profile', label: 'Cá Nhân', icon: User },
-    ...(currentUser?.role === 'admin' ? [{ href: '/admin', label: 'Admin', icon: ShieldCheck }] : []),
+    ...(currentUser?.role && ['admin', 'organizer'].includes(currentUser.role) ? [{ href: '/admin', label: 'Admin', icon: ShieldCheck }] : []),
   ];
 
   return (

@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { SportRule, UserRole } from '@/types';
-import { ShieldCheck, Save, Sliders, Users, Dices, CheckCircle2, UserCheck, RefreshCw, Sparkles, Building, ChevronRight } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Save, Sliders, Users, Dices, CheckCircle2, UserCheck, RefreshCw, Sparkles, Building, ChevronRight, Lock } from 'lucide-react';
 
 export default function AdminPage() {
   const { rules, updateRules, profiles, teams, updateMemberRole, assignMemberTeam, randomTeamDraft, currentUser } = useApp();
@@ -19,6 +20,31 @@ export default function AdminPage() {
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>(teams.map((t) => t.id));
   const [isDrafting, setIsDrafting] = useState(false);
   const [draftResultStatus, setDraftResultStatus] = useState<string | null>(null);
+
+  // Kiểm tra phân quyền: Chỉ cho phép Admin hoặc Ban Tổ Chức (Organizer) truy cập
+  if (!currentUser || !['admin', 'organizer'].includes(currentUser.role)) {
+    return (
+      <div className="max-w-2xl mx-auto my-16 px-4 text-center space-y-6">
+        <div className="glass-panel p-8 sm:p-12 rounded-3xl border border-red-500/30 space-y-6 shadow-2xl">
+          <div className="w-20 h-20 mx-auto rounded-full bg-red-500/10 border-2 border-red-500/40 flex items-center justify-center text-red-500 shadow-lg shadow-red-500/20">
+            <ShieldAlert className="w-10 h-10" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white">TRUY CẬP BỊ TỪ CHỐI</h1>
+            <p className="text-slate-400 text-sm max-w-md mx-auto leading-relaxed">
+              Trang quản trị này dành riêng cho <strong className="text-white">Admin & Ban Tổ Chức Cisco</strong>. Tài khoản của bạn hiện là <span className="text-[#CCFF00] font-bold">{currentUser?.role === 'captain' ? 'Đội Trưởng (Captain)' : 'Vận Động Viên (Athlete)'}</span> và không có quyền truy cập.
+            </p>
+          </div>
+          <Link
+            href="/"
+            className="inline-flex items-center space-x-2 px-6 py-3 rounded-2xl bg-[#00BCEB] hover:bg-[#00a3cc] text-slate-950 font-extrabold text-sm shadow-lg shadow-[#00BCEB]/20 transition-all btn-interactive"
+          >
+            <span>Quay Về Trang Chủ</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const handleMultiplierChange = (type: string, val: string) => {
     const num = parseFloat(val) || 0;
