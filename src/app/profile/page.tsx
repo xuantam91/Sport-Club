@@ -33,10 +33,10 @@ export default function ProfilePage() {
 
   const userActivities = activities.filter(
     (a) =>
-      a.profile_id === currentUser.id ||
-      a.profile?.id === currentUser.id ||
-      (currentUser.strava_id && a.profile?.strava_id === currentUser.strava_id) ||
-      (currentUser.strava_id && a.strava_activity_id)
+      (a.profile_id === currentUser.id ||
+        a.profile?.id === currentUser.id ||
+        (currentUser.strava_id && a.profile?.strava_id === currentUser.strava_id)) &&
+      !a.id.startsWith('act-')
   );
 
   const totalDistMeters = userActivities.reduce((acc, a) => acc + a.distance, 0);
