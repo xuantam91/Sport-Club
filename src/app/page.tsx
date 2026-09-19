@@ -79,8 +79,51 @@ export default function LeaderboardPage() {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('month');
   const [sportFilter, setSportFilter] = useState<SportType>('All');
   const [viewMode, setViewMode] = useState<'individual' | 'team'>('individual');
-
   const lastConfettiRef = useRef<number>(0);
+
+  // Grand Entrance Confetti Sequence on Initial Page Load
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // 1. Gold Rank 1 (Center Podium)
+      confetti({
+        particleCount: 90,
+        spread: 100,
+        origin: { x: 0.5, y: 0.45 },
+        colors: ['#FFD700', '#FFA500', '#CCFF00', '#FFFFFF', '#00BCEB'],
+        shapes: ['star', 'circle'],
+        scalar: 1.25,
+        ticks: 200,
+      });
+
+      // 2. Silver Rank 2 (Left Podium)
+      setTimeout(() => {
+        confetti({
+          particleCount: 60,
+          spread: 80,
+          origin: { x: 0.25, y: 0.5 },
+          colors: ['#E2E8F0', '#94A3B8', '#00BCEB', '#FFFFFF', '#38BDF8'],
+          shapes: ['circle'],
+          scalar: 1.05,
+          ticks: 180,
+        });
+      }, 250);
+
+      // 3. Bronze Rank 3 (Right Podium)
+      setTimeout(() => {
+        confetti({
+          particleCount: 50,
+          spread: 75,
+          origin: { x: 0.75, y: 0.5 },
+          colors: ['#CD7F32', '#FC4C02', '#F97316', '#FDE047', '#EA580C'],
+          shapes: ['circle', 'square'],
+          scalar: 0.95,
+          ticks: 160,
+        });
+      }, 450);
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   /**
    * Rank-specific particle celebration triggers (Fireworks, Stars, Bubbles, Confetti)
