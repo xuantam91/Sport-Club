@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Profile, Team, Activity, SportRule, Challenge, UserRole } from '@/types';
 import { DEFAULT_SPORT_RULES, DEMO_ACTIVITIES, DEMO_PROFILES, DEMO_TEAMS, DEMO_CHALLENGES } from '@/lib/demoData';
-import { calculatePoints } from '@/lib/strava';
+import { calculatePoints, fetchStravaActivities } from '@/lib/strava';
 import { Language, translations } from '@/lib/translations';
 
 interface AppContextType {
@@ -31,7 +31,8 @@ interface AppContextType {
   setShowOnboardingModal: (val: boolean) => void;
   isDemoMode: boolean;
   setDemoMode: (val: boolean) => void;
-  refreshData: () => void;
+  refreshData: () => Promise<void>;
+  syncStravaActivities: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -71,12 +72,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRules(newRules);
     localStorage.setItem('cisco_sport_rules', JSON.stringify(newRules));
 
-    setActivities((prev) =>
-      prev.map((act) => ({
+    setActivities((prev) => {
+      const updated = prev.map((act) => ({
         ...act,
         calculated_points: calculatePoints(act.type, act.distance, act.total_elevation_gain, newRules),
-      }))
-    );
+      }));
+      localStorage.setItem('cisco_sport_activities', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const addActivity = (actData: Partial<Activity>) => {
@@ -105,7 +108,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       created_at: new Date().toISOString(),
     };
 
-    setActivities((prev) => [newAct, ...prev]);
+    setActivities((prev) => {
+      const updated = [newAct, ...prev];
+      localStorage.setItem('cisco_sport_activities', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const createTeam = (newTeamData: { name: string; description: string }) => {
@@ -204,14 +211,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  // Read stored user state on initial load
+  const syncStravaActivities = async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('cisco_strava_token') : null;
+    if (!token || !currentUser) return;
+    try {
+      const fetched = await fetchStravaActivities(token);
+      if (Array.isArray(fetched) && fetched.length > 0) {
+        const newActs: Activity[] = fetched.map((act: any) => ({
+          id: `strava-${act.id}`,
+          profile_id: currentUser.id,
+          profile: currentUser,
+          strava_activity_id: act.id,
+          name: act.name || 'Bài tập Strava',
+          type: act.type === 'Run' ? 'Run' : act.type === 'Ride' ? 'Ride' : act.type === 'Walk' ? 'Walk' : 'Run',
+          distance: act.distance || 0,
+          moving_time: act.moving_time || 0,
+          elapsed_time: act.elapsed_time || 0,
+          total_elevation_gain: act.total_elevation_gain || 0,
+          calculated_points: calculatePoints(
+            act.type === 'Run' ? 'Run' : act.type === 'Ride' ? 'Ride' : act.type === 'Walk' ? 'Walk' : 'Run',
+            act.distance || 0,
+            act.total_elevation_gain || 0,
+            rules
+          ),
+          start_date: act.start_date || new Date().toISOString(),
+          created_at: act.start_date || new Date().toISOString(),
+        }));
+
+        setActivities((prev) => {
+          const existingIds = new Set(prev.map((a) => a.strava_activity_id || a.id));
+          const filteredNew = newActs.filter((a) => !existingIds.has(a.strava_activity_id));
+          const merged = [...filteredNew, ...prev];
+          localStorage.setItem('cisco_sport_activities', JSON.stringify(merged));
+          return merged;
+        });
+      }
+    } catch (e) {
+      console.error('Lỗi đồng bộ Strava:', e);
+    }
+  };
+
+  // Read stored user state & activities on initial load
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedUserStr = localStorage.getItem('cisco_sport_user');
+      let loadedUser: Profile | null = null;
       if (savedUserStr) {
         try {
           const parsed = JSON.parse(savedUserStr);
           if (parsed && parsed.id) {
+            loadedUser = parsed;
             setCurrentUser(parsed);
           }
         } catch (e) {
@@ -229,6 +278,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch (e) {}
       }
 
+      const savedActivitiesStr = localStorage.getItem('cisco_sport_activities');
+      if (savedActivitiesStr) {
+        try {
+          const parsedActivities = JSON.parse(savedActivitiesStr);
+          if (Array.isArray(parsedActivities) && parsedActivities.length > 0) {
+            setActivities(parsedActivities);
+          }
+        } catch (e) {}
+      }
+
       const params = new URLSearchParams(window.location.search);
       if (params.get('strava_connected') === '1') {
         const stravaName = params.get('name');
@@ -237,8 +296,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const stravaEmail = params.get('email');
         const stravaGender = (params.get('gender') as 'male' | 'female' | 'other') || 'male';
         const stravaId = params.get('strava_id');
+        const stravaToken = params.get('strava_token');
 
-        const baseUser = currentUser || DEMO_PROFILES[0];
+        if (stravaToken) {
+          localStorage.setItem('cisco_strava_token', stravaToken);
+        }
+
+        const baseUser = loadedUser || currentUser || DEMO_PROFILES[0];
         const updatedUser: Profile = {
           ...baseUser,
           full_name: stravaName || baseUser.full_name,
@@ -256,6 +320,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           localStorage.setItem('cisco_sport_profiles', JSON.stringify(updated));
           return updated;
         });
+
+        // Parse & import Strava activities if passed in URL
+        const rawActivitiesStr = params.get('strava_activities');
+        if (rawActivitiesStr) {
+          try {
+            const rawActs = JSON.parse(decodeURIComponent(rawActivitiesStr));
+            if (Array.isArray(rawActs) && rawActs.length > 0) {
+              const formattedActs: Activity[] = rawActs.map((act: any) => ({
+                id: act.id,
+                profile_id: updatedUser.id,
+                profile: updatedUser,
+                strava_activity_id: act.strava_activity_id,
+                name: act.name,
+                type: act.type,
+                distance: act.distance,
+                moving_time: act.moving_time,
+                elapsed_time: act.elapsed_time,
+                total_elevation_gain: act.total_elevation_gain,
+                calculated_points: calculatePoints(act.type, act.distance, act.total_elevation_gain, rules),
+                start_date: act.start_date,
+                created_at: act.created_at,
+              }));
+
+              setActivities((prev) => {
+                const existingIds = new Set(prev.map((a) => a.strava_activity_id || a.id));
+                const filteredNew = formattedActs.filter((a) => !existingIds.has(a.strava_activity_id));
+                const merged = [...filteredNew, ...prev];
+                localStorage.setItem('cisco_sport_activities', JSON.stringify(merged));
+                return merged;
+              });
+            }
+          } catch (err) {
+            console.error('Error parsing strava_activities param:', err);
+          }
+        }
 
         setShowOnboardingModal(true);
       }
@@ -298,7 +397,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setShowOnboardingModal(false);
   };
 
-  const refreshData = () => {};
+  const refreshData = async () => {
+    await syncStravaActivities();
+  };
 
   return (
     <AppContext.Provider
@@ -328,6 +429,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isDemoMode,
         setDemoMode,
         refreshData,
+        syncStravaActivities,
       }}
     >
       {children}
