@@ -204,11 +204,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  /**
-   * Tự động bắt callback từ Strava OAuth khi chuyển hướng về /profile
-   */
+  // Read stored user state on initial load
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const savedUserStr = localStorage.getItem('cisco_sport_user');
+      if (savedUserStr) {
+        try {
+          const parsed = JSON.parse(savedUserStr);
+          if (parsed && parsed.id) {
+            setCurrentUser(parsed);
+          }
+        } catch (e) {
+          console.error('Error loading saved user', e);
+        }
+      }
+
+      const savedProfilesStr = localStorage.getItem('cisco_sport_profiles');
+      if (savedProfilesStr) {
+        try {
+          const parsedProfiles = JSON.parse(savedProfilesStr);
+          if (Array.isArray(parsedProfiles) && parsedProfiles.length > 0) {
+            setProfiles(parsedProfiles);
+          }
+        } catch (e) {}
+      }
+
       const params = new URLSearchParams(window.location.search);
       if (params.get('strava_connected') === '1') {
         const stravaName = params.get('name');
@@ -216,18 +236,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const stravaUsername = params.get('username');
         const stravaId = params.get('strava_id');
 
-        if (currentUser) {
-          const updatedUser: Profile = {
-            ...currentUser,
-            full_name: stravaName || currentUser.full_name,
-            avatar_url: stravaAvatar || currentUser.avatar_url,
-            username: stravaUsername || currentUser.username,
-            strava_id: stravaId ? Number(stravaId) : currentUser.strava_id,
-          };
-          setCurrentUser(updatedUser);
-          setProfiles((prev) => prev.map((p) => (p.id === currentUser.id ? updatedUser : p)));
-          setShowOnboardingModal(true);
-        }
+        const baseUser = currentUser || DEMO_PROFILES[0];
+        const updatedUser: Profile = {
+          ...baseUser,
+          full_name: stravaName || baseUser.full_name,
+          avatar_url: stravaAvatar || baseUser.avatar_url,
+          username: stravaUsername || baseUser.username || (stravaName ? stravaName.toLowerCase().replace(/\s+/g, '.') : 'vanguard.runner'),
+          strava_id: stravaId ? Number(stravaId) : baseUser.strava_id,
+        };
+
+        setCurrentUser(updatedUser);
+        localStorage.setItem('cisco_sport_user', JSON.stringify(updatedUser));
+        setProfiles((prev) => {
+          const updated = prev.map((p) => (p.id === updatedUser.id ? updatedUser : p));
+          localStorage.setItem('cisco_sport_profiles', JSON.stringify(updated));
+          return updated;
+        });
+
+        setShowOnboardingModal(true);
       }
     }
   }, []);
@@ -251,7 +277,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setCurrentUser(updatedProfile);
-    setProfiles((prev) => prev.map((p) => (p.id === currentUser.id ? updatedProfile : p)));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cisco_sport_user', JSON.stringify(updatedProfile));
+    }
+
+    setProfiles((prev) => {
+      const updated = prev.map((p) => (p.id === currentUser.id ? updatedProfile : p));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cisco_sport_profiles', JSON.stringify(updated));
+      }
+      return updated;
+    });
+
     setShowOnboardingModal(false);
   };
 

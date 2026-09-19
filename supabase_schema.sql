@@ -43,18 +43,26 @@ CREATE TABLE IF NOT EXISTS public.teams (
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   full_name TEXT NOT NULL,
+  username TEXT UNIQUE,
   email TEXT UNIQUE,
   avatar_url TEXT,
   department TEXT,
-  role TEXT NOT NULL DEFAULT 'member', -- 'admin', 'captain', 'member'
+  role TEXT NOT NULL DEFAULT 'member', -- 'admin', 'organizer', 'captain', 'member'
   team_id UUID REFERENCES public.teams(id) ON DELETE SET NULL,
   strava_id BIGINT UNIQUE,
   strava_access_token TEXT,
   strava_refresh_token TEXT,
   strava_expires_at BIGINT,
+  email_notifications BOOLEAN DEFAULT true,
+  certificates JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Đảm bảo bổ sung các cột nếu bảng đã tồn tại
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS username TEXT UNIQUE;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email_notifications BOOLEAN DEFAULT true;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS certificates JSONB DEFAULT '[]'::jsonb;
 
 -- Tạo liên kết foreign key leader_id cho bảng teams
 ALTER TABLE public.teams 
