@@ -1,7 +1,7 @@
 import { SportRule, SportType } from '@/types';
 
-export const STRAVA_CLIENT_ID = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID || '';
-export const STRAVA_CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET || '';
+export const STRAVA_CLIENT_ID = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID || '161019';
+export const STRAVA_CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET || '5dc1e3005697cbcfc1282bc208ad3025cc519fb8';
 
 /**
  * Tạo URL ủy quyền đăng nhập Strava OAuth 2.0
