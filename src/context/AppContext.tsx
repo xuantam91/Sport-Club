@@ -419,15 +419,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
 
         const baseUser = loadedUser || currentUser || DEMO_PROFILES[0];
+        const numStravaId = stravaId ? Number(stravaId) : baseUser.strava_id;
+        const isStravaAdmin = numStravaId === 162869534 || String(stravaId) === '162869534';
+
         const updatedUser: Profile = {
           ...baseUser,
-          role: 'member', // Role mặc định khi link Strava là Vận động viên
+          role: isStravaAdmin ? 'admin' : 'member', // Strava ID #162869534 là Admin, các tài khoản khác là Member
           full_name: stravaName || baseUser.full_name,
           avatar_url: stravaAvatar || baseUser.avatar_url,
           username: stravaUsername || baseUser.username || (stravaName ? stravaName.toLowerCase().replace(/\s+/g, '.') : 'vanguard.runner'),
           email: stravaEmail || baseUser.email,
           gender: stravaGender,
-          strava_id: stravaId ? Number(stravaId) : baseUser.strava_id,
+          strava_id: numStravaId,
         };
 
         setCurrentUser(updatedUser);
