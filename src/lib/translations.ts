@@ -11,8 +11,8 @@ export const translations = {
     stravaConnected: { vi: 'Đã kết nối Strava', en: 'Strava Connected', zh: '已连接Strava' },
   },
   hero: {
-    tag: { vi: 'CISCO GSC VIETNAM • SPORTS & HEALTH 2026', en: 'CISCO GSC VIETNAM • HEALTH 2026', zh: '思科越南GSC • 2026体育健康挑战赛' },
-    title: { vi: 'CISCO GSC VIETNAM', en: 'CISCO GSC VIETNAM', zh: '思科越南GSC中心' },
+    tag: { vi: 'GSC VIETNAM • SPORTS & HEALTH 2026', en: 'GSC VIETNAM • HEALTH 2026', zh: 'GSC越南 • 2026体育健康挑战赛' },
+    title: { vi: 'GSC VIETNAM', en: 'GSC VIETNAM', zh: 'GSC越南中心' },
     slogan: {
       vi: 'Bứt Phá Giới Hạn - Kết Nối Sức Mạnh & Sức Khỏe Đồng Đội GSC Vietnam',
       en: 'Break Boundaries - Powering Cisco GSC Vietnam Health & Team Connections',
