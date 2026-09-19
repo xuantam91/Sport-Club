@@ -292,22 +292,22 @@ export default function ActivitiesPage() {
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        <div className="overflow-x-auto scrollbar-thin">
+          <table className="w-full text-left border-collapse min-w-[950px]">
             <thead>
-              <tr className="bg-slate-900/80 border-b border-slate-800 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
-                <th className="py-3.5 px-4 sm:px-6">Vận Động Viên</th>
-                <th className="py-3.5 px-4">Đội Nhóm</th>
-                <th className="py-3.5 px-4">Hoạt Động Gần Nhất</th>
-                <th className="py-3.5 px-4 text-center">Tổng Số</th>
-                <th className="py-3.5 px-4 text-right">Tổng Cự Ly</th>
-                <th className="py-3.5 px-4 text-right">Leo Dốc</th>
-                <th className="py-3.5 px-4 text-right">Tổng Điểm</th>
-                <th className="py-3.5 px-4 text-center">Cập Nhật</th>
-                <th className="py-3.5 px-4 text-center">Thao Tác</th>
+              <tr className="bg-slate-900/80 border-b border-slate-800 text-[10px] sm:text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
+                <th className="py-3 px-3 sm:px-4">Vận Động Viên</th>
+                <th className="py-3 px-2">Đội Nhóm</th>
+                <th className="py-3 px-2">Hoạt Động Gần Nhất</th>
+                <th className="py-3 px-2 text-center">Logs</th>
+                <th className="py-3 px-2 text-right">Cự Ly</th>
+                <th className="py-3 px-2 text-right">Leo Dốc</th>
+                <th className="py-3 px-2 text-right">Tổng Điểm</th>
+                <th className="py-3 px-2 text-center">Cập Nhật</th>
+                <th className="py-3 px-3 text-center">Thao Tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 text-sm">
+            <tbody className="divide-y divide-slate-800/60 text-xs sm:text-sm">
               {athleteRows.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-12 text-center text-slate-400 font-medium">
@@ -327,32 +327,32 @@ export default function ActivitiesPage() {
                       }`}
                     >
                       {/* Cột 1: Vận Động Viên */}
-                      <td className="py-4 px-4 sm:px-6">
-                        <div className="flex items-center space-x-3 min-w-[170px]">
+                      <td className="py-3 px-3 sm:px-4">
+                        <div className="flex items-center space-x-2.5 min-w-[150px]">
                           <div className="relative flex-shrink-0">
                             <img
                               src={profile.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
                               alt={profile.full_name}
-                              className="w-10 h-10 rounded-full object-cover border-2 border-slate-700 group-hover:border-[#00BCEB] transition-colors"
+                              className="w-9 h-9 rounded-full object-cover border-2 border-slate-700 group-hover:border-[#00BCEB] transition-colors"
                             />
                             {profile.strava_id && (
-                              <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#FC4C02] text-[9px] font-black text-white flex items-center justify-center border border-slate-900" title="Đã kết nối Strava">
+                              <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#FC4C02] text-[8px] font-black text-white flex items-center justify-center border border-slate-900" title="Đã kết nối Strava">
                                 ⚡
                               </span>
                             )}
                           </div>
                           <div className="min-w-0">
-                            <div className="flex items-center space-x-1.5 flex-wrap">
-                              <span className="font-bold text-white group-hover:text-[#00BCEB] transition-colors text-sm truncate">
+                            <div className="flex items-center space-x-1 flex-wrap">
+                              <span className="font-bold text-white group-hover:text-[#00BCEB] transition-colors text-xs sm:text-sm truncate">
                                 {profile.full_name}
                               </span>
                               {isCurrent && (
-                                <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-[#CCFF00] text-black">
+                                <span className="px-1.5 py-0.2 rounded text-[8px] font-black bg-[#CCFF00] text-black">
                                   BẠN
                                 </span>
                               )}
                             </div>
-                            <span className="text-xs text-slate-400 block mt-0.5 capitalize truncate">
+                            <span className="text-[11px] text-slate-400 block mt-0.5 capitalize truncate">
                               {profile.role === 'admin' ? ' Ban Tổ Chức' : profile.role === 'captain' ? ' Đội Trưởng' : ' VĐV GSC'}
                             </span>
                           </div>
@@ -360,9 +360,9 @@ export default function ActivitiesPage() {
                       </td>
 
                       {/* Cột 2: Đội Nhóm */}
-                      <td className="py-4 px-4 whitespace-nowrap">
+                      <td className="py-3 px-2 whitespace-nowrap">
                         {profile.team ? (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-300">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px] font-semibold text-slate-300">
                             {profile.team.name}
                           </span>
                         ) : (
@@ -370,8 +370,8 @@ export default function ActivitiesPage() {
                         )}
                       </td>
 
-                      {/* Cột 3: Hoạt Động Gần Nhất - CHỈ DÙNG ICON KHÔNG CẦN CHỮ MÔ TẢ TRÁNH VỠ GIAO DIỆN */}
-                      <td className="py-4 px-4 max-w-[220px]">
+                      {/* Cột 3: Hoạt Động Gần Nhất */}
+                      <td className="py-3 px-2 max-w-[170px] sm:max-w-[190px]">
                         {latestActivity ? (
                           <div className="flex items-center space-x-2">
                             {getSportIconOnly(latestActivity.type)}
@@ -379,7 +379,7 @@ export default function ActivitiesPage() {
                               <p className="font-bold text-slate-100 text-xs truncate" title={latestActivity.name}>
                                 {latestActivity.name}
                               </p>
-                              <p className="text-[11px] text-slate-400 flex items-center space-x-1.5 font-medium mt-0.5 whitespace-nowrap">
+                              <p className="text-[10px] text-slate-400 flex items-center space-x-1 font-medium mt-0.5 whitespace-nowrap">
                                 <span className="text-[#CCFF00] font-extrabold">{(latestActivity.distance / 1000).toFixed(1)} km</span>
                                 <span className="text-slate-600">•</span>
                                 <span>{formatTime(latestActivity.moving_time)}</span>
@@ -393,38 +393,38 @@ export default function ActivitiesPage() {
                         )}
                       </td>
 
-                      {/* Cột 4: Tổng Số Hoạt Động */}
-                      <td className="py-4 px-4 text-center whitespace-nowrap">
-                        <span className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-bold text-slate-200">
+                      {/* Cột 4: Logs */}
+                      <td className="py-3 px-2 text-center whitespace-nowrap">
+                        <span className="px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-bold text-slate-200">
                           {totalCount} log
                         </span>
                       </td>
 
-                      {/* Cột 5: Tổng Cự Ly */}
-                      <td className="py-4 px-4 text-right whitespace-nowrap">
+                      {/* Cột 5: Cự Ly */}
+                      <td className="py-3 px-2 text-right whitespace-nowrap">
                         <span className="font-extrabold text-[#CCFF00]">
                           {formatCompactNumber(parseFloat(totalDistanceKm))} <span className="text-[10px] text-slate-400 font-normal">km</span>
                         </span>
                       </td>
 
                       {/* Cột 6: Leo Dốc */}
-                      <td className="py-4 px-4 text-right whitespace-nowrap">
+                      <td className="py-3 px-2 text-right whitespace-nowrap">
                         <span className="font-bold text-slate-300">
                           {formatCompactNumber(totalElevationM)} <span className="text-[10px] text-slate-500 font-normal">m</span>
                         </span>
                       </td>
 
-                      {/* Cột 7: Tổng Điểm - SỐ TO QUY ĐỔI K, M TRÁNH PHẨY TRÔI (VD: +875.6 pts) */}
-                      <td className="py-4 px-4 text-right whitespace-nowrap">
+                      {/* Cột 7: Tổng Điểm */}
+                      <td className="py-3 px-2 text-right whitespace-nowrap">
                         <span className="font-extrabold text-[#FC4C02]">
                           +{formatCompactNumber(totalPoints)} <span className="text-[10px] text-[#FC4C02]/70 font-normal">pts</span>
                         </span>
                       </td>
 
                       {/* Cột 8: Cập Nhật */}
-                      <td className="py-4 px-4 text-center whitespace-nowrap">
+                      <td className="py-3 px-2 text-center whitespace-nowrap">
                         {latestActivity ? (
-                          <span className="text-xs font-bold text-cyan-400 bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-800/40">
+                          <span className="text-[11px] font-bold text-cyan-400 bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-800/40">
                             {formatRelativeTime(latestActivity.start_date)}
                           </span>
                         ) : (
@@ -433,10 +433,10 @@ export default function ActivitiesPage() {
                       </td>
 
                       {/* Cột 9: Thao Tác */}
-                      <td className="py-4 px-4 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-3 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => setSelectedAthleteDetail(profile)}
-                          className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-[#00BCEB] hover:text-slate-950 text-slate-200 text-xs font-bold transition-all border border-slate-700 inline-flex items-center space-x-1"
+                          className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-[#00BCEB] hover:text-slate-950 text-slate-200 text-xs font-bold transition-all border border-slate-700 inline-flex items-center space-x-1"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           <span>Chi Tiết</span>
