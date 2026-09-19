@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Challenge, SportType } from '@/types';
-import { Trophy, PlusCircle, Users, CheckCircle2, Calendar, Target, ArrowRight, Edit3, Eye, ShieldCheck, Flame, Sparkles, Medal, Crown, Clock, X, Upload, Image as ImageIcon, Check } from 'lucide-react';
+import { Trophy, PlusCircle, Users, CheckCircle2, Calendar, Target, ArrowRight, Edit3, Eye, ShieldCheck, Flame, Sparkles, Medal, Crown, Clock, X, Upload, Image as ImageIcon, Check, Share2, Copy, Link as LinkIcon } from 'lucide-react';
 
 const PRESET_BANNERS = [
   { id: 'hero', name: '🏃 Chạy Bộ Đêm', url: '/images/cisco_sports_hero.jpg' },
@@ -19,6 +19,7 @@ export default function ChallengesPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(null);
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // State cho Form Tạo mới / Chỉnh sửa
   const [chTitle, setChTitle] = useState('');
@@ -31,6 +32,41 @@ export default function ChallengesPage() {
   const [chStatus, setChStatus] = useState<'active' | 'upcoming' | 'completed'>('active');
 
   const isAdminOrOrganizer = currentUser?.role === 'admin' || currentUser?.role === 'organizer';
+
+  // Tự động mở Modal Chi Tiết Giải Đấu nếu URL có dạng ?id=ch-xxx
+  useEffect(() => {
+    if (typeof window !== 'undefined' && challenges.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const targetId = params.get('id') || params.get('race') || params.get('ch');
+      if (targetId) {
+        const targetCh = challenges.find((c) => c.id === targetId);
+        if (targetCh) {
+          setSelectedChallenge(targetCh);
+        }
+      }
+    }
+  }, [challenges]);
+
+  const handleShareChallenge = (ch: Challenge, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const shareUrl = typeof window !== 'undefined'
+      ? `${window.location.origin}/challenges?id=${encodeURIComponent(ch.id)}`
+      : `/challenges?id=${ch.id}`;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(shareUrl);
+    } else {
+      const textArea = document.createElement('textarea');
+      textArea.value = shareUrl;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+    }
+
+    setToastMessage(`🔗 Đã sao chép đường dẫn giải đấu "${ch.title}"! Hãy gửi link này cho nhóm để đăng ký.`);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
 
   const openCreateModal = () => {
     setChTitle('');
@@ -257,6 +293,23 @@ export default function ChallengesPage() {
                       style={{ width: `${isJoined ? userProgress.pct : 0}%` }}
                     ></div>
                   </div>
+                </div>
+
+                {/* Active Participants & Share Bar */}
+                <div className="flex items-center justify-between text-xs pt-1">
+                  <span className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 font-bold">
+                    <Users className="w-3.5 h-3.5 text-[#00BCEB]" />
+                    <span>Đang có <strong className="text-[#CCFF00] font-black">{ch.participant_ids.length}</strong> VĐV tham gia</span>
+                  </span>
+
+                  <button
+                    onClick={(e) => handleShareChallenge(ch, e)}
+                    className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-[#00BCEB] hover:text-white border border-[#00BCEB]/40 font-bold text-xs transition-all btn-interactive"
+                    title="Sao chép link đăng ký giải đấu"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span>Share Link</span>
+                  </button>
                 </div>
 
                 {/* Footer Controls */}
@@ -575,7 +628,16 @@ export default function ChallengesPage() {
                   <p className="text-xs text-slate-300 leading-relaxed">{selectedChallenge.description}</p>
                 </div>
 
-                <div className="flex items-center space-x-2 flex-shrink-0">
+                <div className="flex flex-wrap items-center space-x-2 flex-shrink-0 gap-y-2">
+                  <button
+                    onClick={(e) => handleShareChallenge(selectedChallenge, e)}
+                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-[#00BCEB] font-bold text-xs border border-[#00BCEB]/40 flex items-center space-x-1.5 transition-all btn-interactive"
+                    title="Sao chép đường dẫn giải đấu để chia sẻ nhóm"
+                  >
+                    <Share2 className="w-4 h-4 text-[#00BCEB]" />
+                    <span>Sao Chép Link Share</span>
+                  </button>
+
                   {isAdminOrOrganizer && (
                     <button
                       onClick={() => {
@@ -750,6 +812,13 @@ export default function ChallengesPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {/* Toast Notification khi Sao Chép Link */}
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#00BCEB] text-slate-950 px-5 py-3 rounded-2xl shadow-2xl font-extrabold text-xs flex items-center space-x-2 border-2 border-white animate-bounce max-w-md text-center">
+          <Share2 className="w-4 h-4 text-slate-950 flex-shrink-0" />
+          <span>{toastMessage}</span>
         </div>
       )}
     </div>
