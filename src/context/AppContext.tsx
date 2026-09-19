@@ -327,8 +327,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const syncStravaActivities = async (givenToken?: string, targetUser?: Profile | null) => {
-    const token = givenToken || (typeof window !== 'undefined' ? localStorage.getItem('cisco_strava_token') : null);
-    const activeUser = targetUser || currentUser || DEMO_PROFILES[0];
+    const activeUser = targetUser || currentUser;
+    if (!activeUser) return;
+    const userTokenKey = `cisco_strava_token_${activeUser.id}`;
+    const token = givenToken || activeUser.strava_access_token || (typeof window !== 'undefined' ? localStorage.getItem(userTokenKey) || localStorage.getItem('cisco_strava_token') : null);
     if (!token) return;
 
     try {
@@ -345,7 +347,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setActivities((prev) => {
           const existingIds = new Set(prev.map((a) => String(a.strava_activity_id || a.id)));
           const filteredNew = newActs.filter((a) => !existingIds.has(String(a.strava_activity_id || a.id)));
-          const merged = [...filteredNew, ...prev.filter((a) => a.id !== 'act-1')];
+          const updatedPrev = prev.map((a) => {
+            if (activeUser.strava_id && a.profile?.strava_id === activeUser.strava_id) {
+              return { ...a, profile_id: activeUser.id, profile: activeUser };
+            }
+            return a;
+          });
+          const merged = [...filteredNew, ...updatedPrev];
           if (typeof window !== 'undefined') {
             localStorage.setItem('cisco_sport_activities', JSON.stringify(merged));
           }
@@ -365,33 +373,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (savedUserStr) {
         try {
           const parsed = JSON.parse(savedUserStr);
-          if (parsed && parsed.id && !['usr-1', 'usr-2', 'usr-3', 'usr-4', 'usr-5', 'usr-6', 'usr-tamtran'].includes(parsed.id)) {
+          if (parsed && parsed.id) {
             loadedUser = parsed;
             setCurrentUser(parsed);
-          } else {
-            localStorage.removeItem('cisco_sport_user');
-            setCurrentUser(null);
           }
         } catch (e) {
           console.error('Error loading saved user', e);
         }
       }
 
-      // Purge all old demo profiles, teams, activities, challenges from localStorage
+      // Read profiles from localStorage without deleting any connected user profiles
       const savedProfilesStr = localStorage.getItem('cisco_sport_profiles');
       if (savedProfilesStr) {
         try {
           const parsedProfiles: Profile[] = JSON.parse(savedProfilesStr);
-          if (Array.isArray(parsedProfiles)) {
-            const realProfiles = parsedProfiles.filter(
-              (p) => p.strava_id && !['usr-1', 'usr-2', 'usr-3', 'usr-4', 'usr-5', 'usr-6', 'usr-tamtran'].includes(p.id)
-            );
-            setProfiles(realProfiles);
-            localStorage.setItem('cisco_sport_profiles', JSON.stringify(realProfiles));
+          if (Array.isArray(parsedProfiles) && parsedProfiles.length > 0) {
+            setProfiles(parsedProfiles);
           }
         } catch (e) {}
-      } else {
-        setProfiles([]);
       }
 
       const savedTeamsStr = localStorage.getItem('cisco_sport_teams');
@@ -448,10 +447,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const stravaId = params.get('strava_id');
         const stravaToken = params.get('strava_token');
 
-        if (stravaToken) {
-          localStorage.setItem('cisco_strava_token', stravaToken);
-        }
-
         const numStravaId = stravaId ? Number(stravaId) : null;
         const isStravaAdmin = numStravaId === 162869534 || String(stravaId) === '162869534';
 
@@ -464,20 +459,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           let updatedUser: Profile;
 
           if (existingIndex >= 0) {
-            // Cập nhật thông tin cho VĐV đã tồn tại: CHỈ đồng bộ bài tập thể thao, BẢO TỒN cài đặt/tên/ảnh đại diện/team đã cấu hình
+            // Cập nhật thông tin cho VĐV đã tồn tại
             const existing = prev[existingIndex];
             updatedUser = {
               ...existing,
               role: isStravaAdmin ? 'admin' : existing.role || 'member',
               strava_id: numStravaId || existing.strava_id,
+              strava_access_token: stravaToken || existing.strava_access_token,
             };
             const updatedList = [...prev];
             updatedList[existingIndex] = updatedUser;
             localStorage.setItem('cisco_sport_profiles', JSON.stringify(updatedList));
             setCurrentUser(updatedUser);
             localStorage.setItem('cisco_sport_user', JSON.stringify(updatedUser));
-            if (stravaToken) syncStravaActivities(stravaToken, updatedUser);
-            setShowOnboardingModal(false); // Không mở lại popup cài đặt cho tài khoản đã có
+            if (stravaToken) {
+              localStorage.setItem(`cisco_strava_token_${updatedUser.id}`, stravaToken);
+              localStorage.setItem('cisco_strava_token', stravaToken);
+              syncStravaActivities(stravaToken, updatedUser);
+            }
+            setShowOnboardingModal(false);
             return updatedList;
           } else {
             // Tạo mới VĐV hoàn toàn trong hệ thống lần đầu kết nối Strava
@@ -491,14 +491,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               email: stravaEmail || `athlete.${numStravaId}@cisco.com`,
               gender: stravaGender,
               strava_id: numStravaId || undefined,
+              strava_access_token: stravaToken || undefined,
               created_at: new Date().toISOString(),
             };
-            const updatedList = [updatedUser, ...prev];
+            const updatedList = [updatedUser, ...prev.filter((p) => p.id !== newId)];
             localStorage.setItem('cisco_sport_profiles', JSON.stringify(updatedList));
             setCurrentUser(updatedUser);
             localStorage.setItem('cisco_sport_user', JSON.stringify(updatedUser));
-            if (stravaToken) syncStravaActivities(stravaToken, updatedUser);
-            setShowOnboardingModal(true); // Chỉ mở popup hoàn thiện hồ sơ cho VĐV mới lần đầu
+            if (stravaToken) {
+              localStorage.setItem(`cisco_strava_token_${updatedUser.id}`, stravaToken);
+              localStorage.setItem('cisco_strava_token', stravaToken);
+              syncStravaActivities(stravaToken, updatedUser);
+            }
+            setShowOnboardingModal(true);
             return updatedList;
           }
         });

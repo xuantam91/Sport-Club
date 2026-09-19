@@ -195,14 +195,20 @@ export default function LeaderboardPage() {
     }>();
 
     filteredActivities.forEach((act) => {
-      const existing = statsMap.get(act.profile_id) || {
+      // Tìm profile khớp theo id hoặc strava_id
+      const matchedProfile = profiles.find(
+        (p) => p.id === act.profile_id || (p.strava_id && act.profile?.strava_id === p.strava_id)
+      );
+      const targetId = matchedProfile ? matchedProfile.id : act.profile_id;
+
+      const existing = statsMap.get(targetId) || {
         totalDistance: 0,
         totalPoints: 0,
         totalElevation: 0,
         totalTime: 0,
         count: 0,
       };
-      statsMap.set(act.profile_id, {
+      statsMap.set(targetId, {
         totalDistance: existing.totalDistance + act.distance,
         totalPoints: existing.totalPoints + act.calculated_points,
         totalElevation: existing.totalElevation + (act.total_elevation_gain || 0),
