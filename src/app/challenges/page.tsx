@@ -3,7 +3,15 @@
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Challenge, SportType } from '@/types';
-import { Trophy, PlusCircle, Users, CheckCircle2, Calendar, Target, ArrowRight, Edit3, Eye, ShieldCheck, Flame, Sparkles, Medal, Crown, Clock, X } from 'lucide-react';
+import { Trophy, PlusCircle, Users, CheckCircle2, Calendar, Target, ArrowRight, Edit3, Eye, ShieldCheck, Flame, Sparkles, Medal, Crown, Clock, X, Upload, Image as ImageIcon, Check } from 'lucide-react';
+
+const PRESET_BANNERS = [
+  { id: 'hero', name: '🏃 Chạy Bộ Đêm', url: '/images/cisco_sports_hero.jpg' },
+  { id: 'marathon', name: '🏅 Giải Marathon', url: '/images/cisco_marathon.jpg' },
+  { id: 'cycling', name: '🚴 Đạp Xe Đèo Núi', url: '/images/cisco_cycling.jpg' },
+  { id: 'trail', name: '🥾 Leo Núi & Trail Run', url: '/images/cisco_trail.jpg' },
+  { id: 'victory', name: '🏆 Ăn Mừng Vô Địch', url: '/images/cisco_team_victory.jpg' },
+];
 
 export default function ChallengesPage() {
   const { challenges, createChallenge, updateChallenge, joinChallenge, currentUser, profiles, activities, t } = useApp();
@@ -46,6 +54,24 @@ export default function ChallengesPage() {
     setChEndDate(ch.end_date);
     setChBannerUrl(ch.banner_url || '/images/cisco_sports_hero.jpg');
     setChStatus(ch.status);
+  };
+
+  const handleBannerFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 8 * 1024 * 1024) {
+      alert('Dung lượng file ảnh vượt quá 8MB. Vui lòng chọn ảnh dung lượng nhỏ hơn.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        setChBannerUrl(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleCreateSubmit = (e: React.FormEvent) => {
@@ -279,8 +305,8 @@ export default function ChallengesPage() {
       {/* MODAL 1: TẠO HOẶC CHỈNH SỬA GIẢI ĐẤU (Admin/Organizer) */}
       {(showCreateModal || editingChallenge) && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-6 shadow-2xl relative overflow-hidden">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-xl w-full max-h-[90vh] flex flex-col space-y-4 shadow-2xl relative overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 flex-shrink-0">
               <div className="flex items-center space-x-2">
                 <Trophy className="w-5 h-5 text-[#FC4C02]" />
                 <h3 className="font-extrabold text-xl text-white">
@@ -298,7 +324,7 @@ export default function ChallengesPage() {
               </button>
             </div>
 
-            <form onSubmit={editingChallenge ? handleEditSubmit : handleCreateSubmit} className="space-y-4">
+            <form onSubmit={editingChallenge ? handleEditSubmit : handleCreateSubmit} className="space-y-4 overflow-y-auto pr-1.5 flex-1">
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Tên Giải Đấu / Sự Kiện</label>
                 <input
@@ -390,15 +416,86 @@ export default function ChallengesPage() {
                 </div>
               )}
 
-              <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Đường Dẫn Hình Ảnh Banner</label>
-                <input
-                  type="text"
-                  placeholder="/images/cisco_sports_hero.jpg"
-                  value={chBannerUrl}
-                  onChange={(e) => setChBannerUrl(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-[#00BCEB]"
-                />
+              {/* CHỌN VÀ TẢI HÌNH ẢNH BANNER */}
+              <div className="space-y-3 pt-2 border-t border-slate-800">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-extrabold text-[#00BCEB] uppercase tracking-wider flex items-center gap-1.5">
+                    <ImageIcon className="w-4 h-4 text-[#CCFF00]" />
+                    <span>Hình Ảnh Banner Giải Đấu</span>
+                  </label>
+                  <span className="text-[10px] text-slate-400">Chọn ảnh mẫu hoặc tải từ máy tính</span>
+                </div>
+
+                {/* Grid Chọn Ảnh Mẫu Hệ Thống */}
+                <div>
+                  <p className="text-[11px] text-slate-300 font-bold mb-2">1. Chọn Ảnh Banner Có Sẵn Trên Hệ Thống:</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {PRESET_BANNERS.map((banner) => {
+                      const isSelected = chBannerUrl === banner.url;
+                      return (
+                        <div
+                          key={banner.id}
+                          onClick={() => setChBannerUrl(banner.url)}
+                          className={`relative h-20 rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${
+                            isSelected
+                              ? 'border-[#00BCEB] ring-2 ring-[#00BCEB]/40 scale-[1.02]'
+                              : 'border-slate-800 opacity-70 hover:opacity-100 hover:border-slate-600'
+                          }`}
+                        >
+                          <img src={banner.url} alt={banner.name} className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent p-1.5 flex flex-col justify-end">
+                            <span className="text-[10px] font-bold text-white line-clamp-1">{banner.name}</span>
+                          </div>
+                          {isSelected && (
+                            <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-[#00BCEB] text-slate-950 flex items-center justify-center font-black text-xs shadow-md">
+                              ✓
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Nút Tải Ảnh Từ Máy Tính Lên */}
+                <div className="space-y-2 pt-1">
+                  <p className="text-[11px] text-slate-300 font-bold">2. Hoặc Tải Ảnh Tùy Chỉnh Từ Máy Tính:</p>
+                  <label className="flex items-center justify-center space-x-2 p-3 rounded-xl bg-slate-900 border-2 border-dashed border-slate-700 hover:border-[#00BCEB] text-slate-300 hover:text-white cursor-pointer transition-all">
+                    <Upload className="w-4 h-4 text-[#00BCEB]" />
+                    <span className="text-xs font-bold">Bấm để chọn file ảnh từ máy tính (.png, .jpg, .webp)</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleBannerFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                {/* Banner Preview & Live Link */}
+                <div className="pt-1 space-y-1.5">
+                  <label className="block text-[11px] font-semibold text-slate-400">Xem Trước Banner & URL Ảnh Hiện Tại:</label>
+                  <div className="h-24 w-full rounded-xl overflow-hidden border border-slate-700 relative bg-slate-900">
+                    {chBannerUrl ? (
+                      <img src={chBannerUrl} alt="Banner Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-xs text-slate-500">
+                        Chưa chọn ảnh banner
+                      </div>
+                    )}
+                    <div className="absolute bottom-1 right-1 px-2 py-0.5 rounded bg-black/80 text-[9px] font-mono text-emerald-400">
+                      Live Preview
+                    </div>
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="Hoặc dán URL ảnh trực tiếp (https://...)"
+                    value={chBannerUrl}
+                    onChange={(e) => setChBannerUrl(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 text-xs font-mono focus:outline-none focus:border-[#00BCEB]"
+                  />
+                </div>
               </div>
 
               <div className="pt-4 flex justify-end space-x-3 border-t border-slate-800">
