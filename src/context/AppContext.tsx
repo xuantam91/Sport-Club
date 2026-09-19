@@ -365,43 +365,69 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (savedUserStr) {
         try {
           const parsed = JSON.parse(savedUserStr);
-          if (parsed && parsed.id) {
+          if (parsed && parsed.id && !['usr-2', 'usr-3', 'usr-4', 'usr-5', 'usr-6'].includes(parsed.id)) {
             loadedUser = parsed;
             setCurrentUser(parsed);
+          } else {
+            setCurrentUser(DEMO_PROFILES[0]);
+            localStorage.setItem('cisco_sport_user', JSON.stringify(DEMO_PROFILES[0]));
           }
         } catch (e) {
           console.error('Error loading saved user', e);
         }
       }
 
+      // Purge obsolete demo profiles from localStorage and ensure Tam Tran & Tommy Tran exist
       const savedProfilesStr = localStorage.getItem('cisco_sport_profiles');
       if (savedProfilesStr) {
         try {
-          const parsedProfiles = JSON.parse(savedProfilesStr);
-          if (Array.isArray(parsedProfiles) && parsedProfiles.length > 0) {
-            setProfiles(parsedProfiles);
+          const parsedProfiles: Profile[] = JSON.parse(savedProfilesStr);
+          if (Array.isArray(parsedProfiles)) {
+            const validProfilesMap = new Map<string, Profile>();
+            DEMO_PROFILES.forEach((p) => validProfilesMap.set(p.id, p));
+            parsedProfiles.forEach((p) => {
+              if (p.strava_id || p.id === 'usr-1' || p.id === 'usr-tamtran') {
+                validProfilesMap.set(p.id, p);
+              }
+            });
+            const cleanedProfiles = Array.from(validProfilesMap.values());
+            setProfiles(cleanedProfiles);
+            localStorage.setItem('cisco_sport_profiles', JSON.stringify(cleanedProfiles));
           }
         } catch (e) {}
+      } else {
+        setProfiles(DEMO_PROFILES);
+        localStorage.setItem('cisco_sport_profiles', JSON.stringify(DEMO_PROFILES));
       }
 
       const savedActivitiesStr = localStorage.getItem('cisco_sport_activities');
       if (savedActivitiesStr) {
         try {
-          const parsedActivities = JSON.parse(savedActivitiesStr);
-          if (Array.isArray(parsedActivities) && parsedActivities.length > 0) {
-            setActivities(parsedActivities);
+          const parsedActivities: Activity[] = JSON.parse(savedActivitiesStr);
+          if (Array.isArray(parsedActivities)) {
+            const cleanedActivities = parsedActivities.filter(
+              (a) => !['act-2', 'act-3', 'act-4', 'act-5'].includes(a.id)
+            );
+            setActivities(cleanedActivities);
+            localStorage.setItem('cisco_sport_activities', JSON.stringify(cleanedActivities));
           }
         } catch (e) {}
+      } else {
+        setActivities([]);
       }
 
       const savedChallengesStr = localStorage.getItem('cisco_sport_challenges');
       if (savedChallengesStr) {
         try {
-          const parsedChallenges = JSON.parse(savedChallengesStr);
-          if (Array.isArray(parsedChallenges) && parsedChallenges.length > 0) {
-            setChallenges(parsedChallenges);
+          const parsedChallenges: Challenge[] = JSON.parse(savedChallengesStr);
+          if (Array.isArray(parsedChallenges)) {
+            const cleanedChallenges = parsedChallenges.filter((c) => !['ch-1', 'ch-2', 'ch-3'].includes(c.id));
+            setChallenges(cleanedChallenges);
+            localStorage.setItem('cisco_sport_challenges', JSON.stringify(cleanedChallenges));
           }
         } catch (e) {}
+      } else {
+        setChallenges([]);
       }
 
       const params = new URLSearchParams(window.location.search);
