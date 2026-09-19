@@ -22,6 +22,7 @@ interface AppContextType {
   createTeam: (team: { name: string; description: string }) => Team;
   joinTeam: (teamCode: string) => boolean;
   createChallenge: (ch: Omit<Challenge, 'id' | 'participant_ids' | 'status'>) => Challenge;
+  updateChallenge: (id: string, updatedData: Partial<Challenge>) => void;
   joinChallenge: (challengeId: string) => void;
   updateMemberRole: (userId: string, role: UserRole) => void;
   assignMemberTeam: (userId: string, teamId: string) => void;
@@ -163,6 +164,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setChallenges((prev) => [newCh, ...prev]);
     return newCh;
+  };
+
+  const updateChallenge = (id: string, updatedData: Partial<Challenge>) => {
+    setChallenges((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, ...updatedData } : c))
+    );
   };
 
   const joinChallenge = (challengeId: string) => {
@@ -385,6 +392,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createTeam,
         joinTeam,
         createChallenge,
+        updateChallenge,
         joinChallenge,
         updateMemberRole,
         assignMemberTeam,
