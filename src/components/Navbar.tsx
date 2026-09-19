@@ -26,23 +26,23 @@ export const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo Cisco GSC Vietnam */}
-          <Link href="/" className="flex items-center space-x-3 group btn-interactive">
-            <CiscoOfficialLogo className="h-7 w-auto group-hover:scale-105 transition-transform duration-300" />
+          <Link href="/" className="flex items-center space-x-2 sm:space-x-3 group btn-interactive">
+            <CiscoOfficialLogo className="h-6 sm:h-7 w-auto group-hover:scale-105 transition-transform duration-300" />
             
             {/* Elegant Vertical Glass Divider */}
-            <div className="h-5 w-px bg-gradient-to-b from-transparent via-slate-700 to-transparent"></div>
+            <div className="h-4 sm:h-5 w-px bg-gradient-to-b from-transparent via-slate-700 to-transparent"></div>
 
             {/* Pro High-Tech GSC VIETNAM Badge */}
-            <div className="flex items-center space-x-2">
-              <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-900/90 border border-[#00BCEB]/35 shadow-inner group-hover:border-[#00BCEB]/70 group-hover:shadow-[#00BCEB]/10 transition-all duration-300">
+            <div className="flex items-center space-x-1.5 sm:space-x-2">
+              <div className="flex items-center space-x-1.5 sm:space-x-2 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-slate-900/90 border border-[#00BCEB]/35 shadow-inner group-hover:border-[#00BCEB]/70 group-hover:shadow-[#00BCEB]/10 transition-all duration-300">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#CCFF00] animate-pulse"></span>
-                <span className="font-extrabold text-xs tracking-widest uppercase bg-gradient-to-r from-white via-cyan-100 to-[#00BCEB] bg-clip-text text-transparent">
+                <span className="font-extrabold text-[10px] sm:text-xs tracking-wider sm:tracking-widest uppercase bg-gradient-to-r from-white via-cyan-100 to-[#00BCEB] bg-clip-text text-transparent">
                   GSC VIETNAM
                 </span>
               </div>
 
               {isDemoMode && (
-                <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider bg-[#CCFF00]/10 text-[#CCFF00] border border-[#CCFF00]/30 rounded-full">
+                <span className="px-1.5 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider bg-[#CCFF00]/10 text-[#CCFF00] border border-[#CCFF00]/30 rounded-full">
                   DEMO
                 </span>
               )}
