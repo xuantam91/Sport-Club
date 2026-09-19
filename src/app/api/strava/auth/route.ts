@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server';
 import { getStravaOAuthUrl } from '@/lib/strava';
 
 export async function GET(request: Request) {
+  const userAgent = request.headers.get('user-agent') || '';
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(userAgent);
+
   const host = request.headers.get('host') || 'gsc-sport.vercel.app';
   const protocol = host.includes('localhost') ? 'http' : 'https';
   const redirectUri = `${protocol}://${host}/api/strava/callback`;
 
-  const url = getStravaOAuthUrl(redirectUri);
+  const url = getStravaOAuthUrl(redirectUri, isMobile);
   return NextResponse.redirect(url);
 }
