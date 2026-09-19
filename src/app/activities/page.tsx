@@ -80,7 +80,7 @@ export default function ActivitiesPage() {
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           {/* Nút Kết nối Strava OAuth */}
           <a
-            href={getStravaOAuthUrl('http://localhost:3000/api/strava/callback')}
+            href="/api/strava/auth"
             className="flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl bg-[#FC4C02] hover:bg-[#e04300] text-white font-extrabold text-sm shadow-lg shadow-[#FC4C02]/20 transition-all"
           >
             <Zap className="w-4 h-4 fill-white" />

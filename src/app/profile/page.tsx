@@ -84,7 +84,7 @@ export default function ProfilePage() {
             </div>
             <p className="text-[11px] text-slate-400">Strava ID: #{currentUser.strava_id || '998811'}</p>
             <a
-              href={getStravaOAuthUrl('http://localhost:3000/api/strava/callback')}
+              href="/api/strava/auth"
               className="w-full px-3 py-1.5 rounded-xl bg-[#FC4C02] text-white font-bold text-xs hover:bg-[#e04300] transition-colors btn-interactive"
             >
               {t('profile', 'updateOAuth')}
