@@ -24,7 +24,7 @@ export const translations = {
       zh: '思科越南GSC团队员工健身计划。连接Strava应用，记录跑步、骑行、步行成绩，表彰优秀团队！',
     },
     syncBtn: { vi: 'Đồng Bộ Strava Ngay', en: 'Sync Strava Now', zh: '立即同步Strava' },
-    joinTeamBtn: { vi: 'Tham Gia Team GSC', en: 'Join GSC Team', zh: '加入GSC团队' },
+    joinTeamBtn: { vi: 'Tham Gia Team', en: 'Join Team', zh: '加入团队' },
     statsTotalDistance: { vi: 'Tổng Cự Ly GSC', en: 'GSC Distance', zh: 'GSC总里程' },
     statsTotalPoints: { vi: 'Tổng Điểm Tích Lũy', en: 'Total Points', zh: '累计总积分' },
     statsTotalAthletes: { vi: 'VĐV Cisco GSC', en: 'GSC Athletes', zh: 'GSC运动员' },

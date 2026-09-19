@@ -323,17 +323,17 @@ export default function LeaderboardPage() {
             <div className="flex items-center gap-2 sm:gap-3 pt-1 w-full sm:w-auto">
               <Link
                 href="/activities"
-                className="flex-1 sm:flex-none flex items-center justify-center space-x-1.5 sm:space-x-2 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#FC4C02] to-orange-500 hover:from-orange-500 hover:to-[#FC4C02] text-white font-extrabold text-xs sm:text-sm shadow-md shadow-[#FC4C02]/25 transition-all transform hover:-translate-y-0.5 btn-interactive text-center whitespace-nowrap"
+                className="flex-1 sm:flex-none flex items-center justify-center space-x-1 sm:space-x-2 px-2.5 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#FC4C02] to-orange-500 hover:from-orange-500 hover:to-[#FC4C02] text-white font-extrabold text-[11px] xs:text-xs sm:text-sm shadow-md shadow-[#FC4C02]/25 transition-all transform hover:-translate-y-0.5 btn-interactive text-center whitespace-nowrap"
               >
                 <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-white shrink-0" />
-                <span>{t('hero', 'syncBtn')}</span>
+                <span className="truncate">{t('hero', 'syncBtn')}</span>
               </Link>
               <Link
                 href="/teams"
-                className="flex-1 sm:flex-none flex items-center justify-center space-x-1.5 sm:space-x-2 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xs sm:text-sm border border-slate-700 backdrop-blur-md transition-all btn-interactive text-center whitespace-nowrap"
+                className="flex-1 sm:flex-none flex items-center justify-center space-x-1 sm:space-x-2 px-2.5 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-[11px] xs:text-xs sm:text-sm border border-slate-700 backdrop-blur-md transition-all btn-interactive text-center whitespace-nowrap"
               >
                 <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#00BCEB] shrink-0" />
-                <span>{t('hero', 'joinTeamBtn')}</span>
+                <span className="truncate">{t('hero', 'joinTeamBtn')}</span>
               </Link>
             </div>
           </div>
