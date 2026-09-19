@@ -2,14 +2,21 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { User, Shield, Activity, CheckCircle2, Building, Mail, Settings, RefreshCw, Zap, Bug } from 'lucide-react';
-import { Certificate } from '@/types';
+import { User, Shield, Activity, CheckCircle2, Building, Mail, Settings, RefreshCw, Zap, Bug, ChevronRight, Eye, ListFilter } from 'lucide-react';
+import { Certificate, Activity as ActivityType } from '@/types';
 
 export default function ProfilePage() {
-  const { currentUser, activities, setShowOnboardingModal, refreshData, syncStravaActivities, t } = useApp();
+  const { currentUser, activities, setShowOnboardingModal, refreshData, t } = useApp();
   const [selectedCert, setSelectedCert] = useState<Certificate | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [debugOutput, setDebugOutput] = useState<string | null>(null);
+  
+  // State quản lý xem chi tiết môn thể thao
+  const [activeCategoryModal, setActiveCategoryModal] = useState<{
+    type: string;
+    name: string;
+    list: ActivityType[];
+  } | null>(null);
 
   if (!currentUser) {
     return (
@@ -53,6 +60,32 @@ export default function ProfilePage() {
   const totalDistMeters = userActivities.reduce((acc, a) => acc + a.distance, 0);
   const totalPoints = userActivities.reduce((acc, a) => acc + a.calculated_points, 0);
   const totalElevation = userActivities.reduce((acc, a) => acc + (a.total_elevation_gain || 0), 0);
+
+  // Phân loại hoạt động theo từng chủng loại môn thể thao
+  const sportCategories = [
+    { type: 'Run', name: '🏃 Chạy Bộ (Run)', color: 'from-[#FC4C02]/20 to-[#ff6a26]/5', border: 'border-[#FC4C02]/40', badge: 'text-[#FC4C02]' },
+    { type: 'Ride', name: '🚴 Đạp Xe (Ride)', color: 'from-[#00BCEB]/20 to-[#00f0ff]/5', border: 'border-[#00BCEB]/40', badge: 'text-[#00BCEB]' },
+    { type: 'Walk', name: '🚶 Đi Bộ (Walk)', color: 'from-[#CCFF00]/20 to-[#b8e600]/5', border: 'border-[#CCFF00]/40', badge: 'text-[#CCFF00]' },
+    { type: 'Swim', name: '🏊 Bơi Lội (Swim)', color: 'from-blue-500/20 to-cyan-600/5', border: 'border-blue-500/40', badge: 'text-blue-400' },
+    { type: 'Hike', name: '🥾 Leo Núi (Hike)', color: 'from-emerald-500/20 to-teal-600/5', border: 'border-emerald-500/40', badge: 'text-emerald-400' },
+  ];
+
+  const groupedStats = sportCategories.map((cat) => {
+    const list = userActivities.filter((a) => a.type === cat.type);
+    const distMeters = list.reduce((sum, a) => sum + a.distance, 0);
+    const points = list.reduce((sum, a) => sum + a.calculated_points, 0);
+    const count = list.length;
+
+    return {
+      ...cat,
+      list,
+      count,
+      km: (distMeters / 1000).toFixed(1),
+      points: points.toFixed(1),
+    };
+  });
+
+  const activeGroupedStats = groupedStats.filter((item) => item.count > 0);
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -146,51 +179,12 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* CHỨNG CHỈ & THÀNH TÍCH ĐIỆN TỬ (Certificates Section) */}
+      {/* THỐNG KÊ GỌN THEO CHỦNG LOẠI MÔN THỂ THAO (Grouped Activity Summaries) */}
       <div className="glass-panel p-6 rounded-3xl border border-slate-800 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-extrabold text-lg text-white flex items-center gap-2">
-            <Shield className="w-5 h-5 text-[#CCFF00]" />
-            <span>{t('profile', 'certTitle')} ({currentUser.certificates?.length || 0})</span>
-          </h2>
-          <span className="text-xs text-[#00BCEB] font-bold">Cấp bởi Ban Tổ Chức Cisco GSC</span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {(currentUser.certificates || []).map((cert) => (
-            <div
-              key={cert.id}
-              onClick={() => setSelectedCert(cert)}
-              className="p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950 border border-amber-500/30 hover:border-amber-400/60 shadow-lg cursor-pointer transition-all duration-300 group btn-interactive"
-            >
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[10px] font-black uppercase">
-                    CHỨNG CHỈ THỂ THAO
-                  </span>
-                  <h3 className="font-bold text-base text-white group-hover:text-[#CCFF00] transition-colors">{cert.title}</h3>
-                  <p className="text-xs text-slate-400">{cert.achievement_detail}</p>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-400/40 flex items-center justify-center text-amber-400 text-lg font-black group-hover:scale-110 transition-transform">
-                  📜
-                </div>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
-                <span>Ngày cấp: {cert.issue_date}</span>
-                <span className="text-[#00BCEB] font-semibold underline group-hover:text-[#CCFF00]">Xem Bằng Khen ➔</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Activity Timeline */}
-      <div className="glass-panel p-6 rounded-3xl border border-slate-800 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-extrabold text-lg text-white flex items-center gap-2">
-            <Activity className="w-5 h-5 text-[#FC4C02]" />
-            <span>{t('profile', 'historyTitle')} ({userActivities.length})</span>
+            <ListFilter className="w-5 h-5 text-[#00BCEB]" />
+            <span>Phân Loại Theo Chủng Loại Thể Thao ({activeGroupedStats.length} Bộ Môn)</span>
           </h2>
 
           <div className="flex items-center space-x-2">
@@ -252,25 +246,138 @@ export default function ProfilePage() {
             </div>
           </div>
         ) : (
-          <div className="space-y-3">
-            {userActivities.map((act) => (
-              <div key={act.id} className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
-                <div>
-                  <h4 className="font-bold text-sm text-white">{act.name}</h4>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    {act.type} • {(act.distance / 1000).toFixed(2)} km • {new Date(act.start_date).toLocaleDateString('vi-VN')}
-                  </p>
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {groupedStats
+              .filter((item) => item.count > 0)
+              .map((cat) => (
+                <div
+                  key={cat.type}
+                  className={`p-5 rounded-3xl bg-gradient-to-br ${cat.color} border ${cat.border} space-y-4 shadow-lg hover:scale-[1.01] transition-all`}
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-extrabold text-base text-white">{cat.name}</h3>
+                    <span className="px-2.5 py-1 rounded-full bg-slate-900/80 text-xs font-bold text-slate-300 border border-slate-800">
+                      {cat.count} bài tập
+                    </span>
+                  </div>
 
-                <div className="text-right">
-                  <span className="font-extrabold text-base text-[#CCFF00]">+{act.calculated_points} pts</span>
-                  <p className="text-[10px] text-slate-500">Leo dốc: {act.total_elevation_gain || 0}m</p>
+                  <div className="grid grid-cols-2 gap-2 bg-slate-950/70 p-3 rounded-2xl border border-slate-800/80 text-center">
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-medium">Tổng cự ly</p>
+                      <p className={`font-black text-lg ${cat.badge} mt-0.5`}>
+                        {cat.km} <span className="text-[10px] font-normal text-slate-400">km</span>
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-medium">Tổng điểm</p>
+                      <p className="font-black text-lg text-white mt-0.5">
+                        +{cat.points} <span className="text-[10px] font-normal text-slate-400">pts</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setActiveCategoryModal({ type: cat.type, name: cat.name, list: cat.list })}
+                    className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs transition-colors flex items-center justify-center space-x-1.5 btn-interactive border border-slate-800"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-[#00BCEB]" />
+                    <span>Xem Chi Tiết Tất Cả ({cat.count}) ➔</span>
+                  </button>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         )}
       </div>
+
+      {/* CHỨNG CHỈ & THÀNH TÍCH ĐIỆN TỬ (Certificates Section) */}
+      <div className="glass-panel p-6 rounded-3xl border border-slate-800 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-extrabold text-lg text-white flex items-center gap-2">
+            <Shield className="w-5 h-5 text-[#CCFF00]" />
+            <span>{t('profile', 'certTitle')} ({currentUser.certificates?.length || 0})</span>
+          </h2>
+          <span className="text-xs text-[#00BCEB] font-bold">Cấp bởi Ban Tổ Chức Cisco GSC</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {(currentUser.certificates || []).map((cert) => (
+            <div
+              key={cert.id}
+              onClick={() => setSelectedCert(cert)}
+              className="p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950 border border-amber-500/30 hover:border-amber-400/60 shadow-lg cursor-pointer transition-all duration-300 group btn-interactive"
+            >
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[10px] font-black uppercase">
+                    CHỨNG CHỈ THỂ THAO
+                  </span>
+                  <h3 className="font-bold text-base text-white group-hover:text-[#CCFF00] transition-colors">{cert.title}</h3>
+                  <p className="text-xs text-slate-400">{cert.achievement_detail}</p>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-400/40 flex items-center justify-center text-amber-400 text-lg font-black group-hover:scale-110 transition-transform">
+                  📜
+                </div>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+                <span>Ngày cấp: {cert.issue_date}</span>
+                <span className="text-[#00BCEB] font-semibold underline group-hover:text-[#CCFF00]">Xem Bằng Khen ➔</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* MODAL DANH SÁCH BÀI TẬP CHI TIẾT KHI NHẤP CHI TIẾT MÔN THỂ THAO */}
+      {activeCategoryModal && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-2xl w-full space-y-6 shadow-2xl relative overflow-hidden max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div>
+                <span className="text-[10px] font-extrabold text-[#00BCEB] uppercase tracking-wider">DANH SÁCH CHI TIẾT BÀI TẬP</span>
+                <h3 className="font-extrabold text-xl text-white mt-0.5">{activeCategoryModal.name}</h3>
+              </div>
+
+              <button
+                onClick={() => setActiveCategoryModal(null)}
+                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Scrollable Workout List */}
+            <div className="overflow-y-auto space-y-3 pr-1 flex-1">
+              {activeCategoryModal.list.map((act) => (
+                <div key={act.id} className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between hover:border-slate-700 transition-colors">
+                  <div className="space-y-1">
+                    <h4 className="font-bold text-sm text-white">{act.name}</h4>
+                    <p className="text-xs text-slate-400">
+                      📅 {new Date(act.start_date).toLocaleDateString('vi-VN')} • ⏱️ {Math.floor(act.moving_time / 60)} phút • 🏔️ Leo dốc: {act.total_elevation_gain || 0}m
+                    </p>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="font-extrabold text-base text-[#CCFF00]">
+                      {(act.distance / 1000).toFixed(2)} km
+                    </span>
+                    <p className="text-xs font-bold text-[#FC4C02]">+{act.calculated_points} pts</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 border-t border-slate-800 text-right">
+              <button
+                onClick={() => setActiveCategoryModal(null)}
+                className="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs"
+              >
+                Đóng Màn Hình
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL POPUP CHỨNG CHỈ VINH DANH (Digital Certificate Viewer) */}
       {selectedCert && (

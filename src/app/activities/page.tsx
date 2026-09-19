@@ -2,12 +2,13 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Activity as ActivityIcon, Zap, RefreshCw, PlusCircle, CheckCircle2, Flame, MapPin, Calendar, Clock, ArrowUpRight } from 'lucide-react';
+import { Activity as ActivityIcon, Zap, RefreshCw, PlusCircle, CheckCircle2, Flame, MapPin, Calendar, Clock, ArrowUpRight, Filter } from 'lucide-react';
 import { getStravaOAuthUrl } from '@/lib/strava';
 
 export default function ActivitiesPage() {
   const { activities, currentUser, addActivity, refreshData } = useApp();
 
+  const [selectedType, setSelectedType] = useState<string>('All');
   const [showAddModal, setShowAddModal] = useState(false);
   const [actName, setActName] = useState('');
   const [actType, setActType] = useState<'Run' | 'Ride' | 'Walk' | 'Swim'>('Run');
@@ -64,6 +65,19 @@ export default function ActivitiesPage() {
     return `${mins}m`;
   };
 
+  const filteredActivities = selectedType === 'All' 
+    ? activities 
+    : activities.filter((a) => a.type === selectedType);
+
+  const sportCategories = [
+    { type: 'All', name: 'Tất Cả Môn' },
+    { type: 'Run', name: '🏃 Chạy Bộ' },
+    { type: 'Ride', name: '🚴 Đạp Xe' },
+    { type: 'Walk', name: '🚶 Đi Bộ' },
+    { type: 'Swim', name: '🏊 Bơi Lội' },
+    { type: 'Hike', name: '🥾 Leo Núi' },
+  ];
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Top Banner & Strava Connect */}
@@ -108,18 +122,36 @@ export default function ActivitiesPage() {
         </div>
       </div>
 
+      {/* Filter Tabs By Sport Category */}
+      <div className="flex items-center space-x-2 overflow-x-auto pb-2 border-b border-slate-800">
+        <Filter className="w-4 h-4 text-slate-400 mr-2 flex-shrink-0" />
+        {sportCategories.map((cat) => (
+          <button
+            key={cat.type}
+            onClick={() => setSelectedType(cat.type)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap btn-interactive ${
+              selectedType === cat.type
+                ? 'bg-[#00BCEB] text-slate-950 shadow-md shadow-[#00BCEB]/20 font-black'
+                : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+            }`}
+          >
+            {cat.name}
+          </button>
+        ))}
+      </div>
+
       {/* Grid Feed Nhật Ký Hoạt Động */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-extrabold text-xl text-white flex items-center gap-2">
             <Flame className="w-5 h-5 text-[#FC4C02]" />
-            <span>Nhật Ký Mới Nhất ({activities.length})</span>
+            <span>Nhật Ký ({filteredActivities.length})</span>
           </h2>
-          <span className="text-xs text-slate-400 font-medium">Tất cả môn thể thao</span>
+          <span className="text-xs text-slate-400 font-medium">Phân loại theo môn</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {activities.map((act) => (
+          {filteredActivities.map((act) => (
             <div
               key={act.id}
               className="glass-card p-5 rounded-3xl border border-slate-800 space-y-4 hover:border-slate-700 transition-all"
@@ -146,7 +178,7 @@ export default function ActivitiesPage() {
                 </div>
 
                 <div className="px-3 py-1 rounded-full bg-[#FC4C02]/15 border border-[#FC4C02]/30 text-[#FC4C02] text-xs font-bold">
-                  {act.type === 'Run' ? '🏃 Chạy bộ' : act.type === 'Ride' ? '🚴 Đạp xe' : act.type === 'Walk' ? '🚶 Đi bộ' : '🏊 Bơi lội'}
+                  {act.type === 'Run' ? '🏃 Chạy bộ' : act.type === 'Ride' ? '🚴 Đạp xe' : act.type === 'Walk' ? '🚶 Đi bộ' : act.type === 'Swim' ? '🏊 Bơi lội' : '🥾 Leo núi'}
                 </div>
               </div>
 
