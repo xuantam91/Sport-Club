@@ -84,40 +84,50 @@ export default function LeaderboardPage() {
 
   /**
    * Rank-specific particle celebration triggers (Fireworks, Stars, Bubbles, Confetti)
+   * Originates precisely from the hovered card or table row on the screen.
    */
-  const triggerRankConfetti = (rank: number) => {
+  const triggerRankConfetti = (rank: number, e?: React.MouseEvent<HTMLElement>) => {
     const now = Date.now();
-    if (now - lastConfettiRef.current < 600) return; // 600ms cooldown to prevent spamming
+    if (now - lastConfettiRef.current < 400) return; // 400ms cooldown to prevent spamming
     lastConfettiRef.current = now;
 
+    let originX = 0.5;
+    let originY = 0.6;
+
+    if (e && e.currentTarget) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      originX = (rect.left + rect.width / 2) / window.innerWidth;
+      originY = (rect.top + rect.height / 2) / window.innerHeight;
+    }
+
     if (rank === 1) {
-      // Top 1 Gold: Glowing golden fireworks & star sparkles
+      // Top 1 Gold: Glowing golden fireworks & star sparkles originating from target element
       confetti({
         particleCount: 80,
         spread: 100,
-        origin: { y: 0.55 },
+        origin: { x: originX, y: originY },
         colors: ['#FFD700', '#FFA500', '#CCFF00', '#FFFFFF', '#00BCEB'],
         shapes: ['star', 'circle'],
         scalar: 1.25,
         ticks: 200,
       });
     } else if (rank === 2) {
-      // Top 2 Silver: Shimmering silver & cyan bubbles
+      // Top 2 Silver: Shimmering silver & cyan bubbles originating from target element
       confetti({
         particleCount: 55,
         spread: 80,
-        origin: { y: 0.6 },
+        origin: { x: originX, y: originY },
         colors: ['#E2E8F0', '#94A3B8', '#00BCEB', '#FFFFFF', '#38BDF8'],
         shapes: ['circle'],
         scalar: 1.05,
         ticks: 180,
       });
     } else if (rank === 3) {
-      // Top 3 Bronze: Bronze & festive amber paper confetti
+      // Top 3 Bronze: Bronze & festive amber paper confetti originating from target element
       confetti({
         particleCount: 45,
         spread: 70,
-        origin: { y: 0.65 },
+        origin: { x: originX, y: originY },
         colors: ['#CD7F32', '#FC4C02', '#F97316', '#FDE047', '#EA580C'],
         shapes: ['circle', 'square'],
         scalar: 0.95,
@@ -476,7 +486,7 @@ export default function LeaderboardPage() {
             {/* HẠNG 2 - SILVER */}
             {top3Individual[1] && (
               <div
-                onMouseEnter={() => triggerRankConfetti(2)}
+                onMouseEnter={(e) => triggerRankConfetti(2, e)}
                 className="order-2 md:order-1 silver-podium p-6 rounded-3xl flex flex-col items-center justify-between text-center relative overflow-hidden group hover:scale-[1.03] hover:shadow-[0_0_40px_rgba(226,232,240,0.35)] transition-all cursor-pointer"
               >
                 <div className="absolute top-3 left-3 bg-slate-300 text-slate-900 font-extrabold text-xs px-2.5 py-1 rounded-full flex items-center gap-1 shadow-md">
@@ -512,7 +522,7 @@ export default function LeaderboardPage() {
             {/* HẠNG 1 - GOLD */}
             {top3Individual[0] && (
               <div
-                onMouseEnter={() => triggerRankConfetti(1)}
+                onMouseEnter={(e) => triggerRankConfetti(1, e)}
                 className="order-1 md:order-2 gold-podium p-6 sm:p-8 rounded-3xl flex flex-col items-center justify-between text-center relative overflow-hidden group hover:scale-[1.04] hover:shadow-[0_0_50px_rgba(255,215,0,0.45)] transition-all md:-mt-4 cursor-pointer"
               >
                 <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-amber-950 font-black text-xs px-4 py-1 rounded-full flex items-center gap-1.5 shadow-lg shadow-amber-400/20">
@@ -553,7 +563,7 @@ export default function LeaderboardPage() {
             {/* HẠNG 3 - BRONZE */}
             {top3Individual[2] && (
               <div
-                onMouseEnter={() => triggerRankConfetti(3)}
+                onMouseEnter={(e) => triggerRankConfetti(3, e)}
                 className="order-3 bronze-podium p-6 rounded-3xl flex flex-col items-center justify-between text-center relative overflow-hidden group hover:scale-[1.03] hover:shadow-[0_0_40px_rgba(234,88,12,0.35)] transition-all cursor-pointer"
               >
                 <div className="absolute top-3 left-3 bg-orange-600 text-white font-extrabold text-xs px-2.5 py-1 rounded-full flex items-center gap-1 shadow-md">
@@ -593,7 +603,7 @@ export default function LeaderboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 pt-4">
             {top3Team[1] && (
               <div
-                onMouseEnter={() => triggerRankConfetti(2)}
+                onMouseEnter={(e) => triggerRankConfetti(2, e)}
                 className="silver-podium p-6 rounded-3xl flex flex-col justify-between text-center relative cursor-pointer hover:scale-[1.03] transition-transform"
               >
                 <div className="text-xs font-bold text-slate-300">{t('podium', 'silverTitle')}</div>
@@ -607,7 +617,7 @@ export default function LeaderboardPage() {
             )}
             {top3Team[0] && (
               <div
-                onMouseEnter={() => triggerRankConfetti(1)}
+                onMouseEnter={(e) => triggerRankConfetti(1, e)}
                 className="gold-podium p-6 sm:p-8 rounded-3xl flex flex-col justify-between text-center relative md:-mt-4 cursor-pointer hover:scale-[1.04] transition-transform"
               >
                 <div className="text-xs font-black text-amber-400 tracking-wider">{t('podium', 'goldTeam')}</div>
@@ -621,7 +631,7 @@ export default function LeaderboardPage() {
             )}
             {top3Team[2] && (
               <div
-                onMouseEnter={() => triggerRankConfetti(3)}
+                onMouseEnter={(e) => triggerRankConfetti(3, e)}
                 className="bronze-podium p-6 rounded-3xl flex flex-col justify-between text-center relative cursor-pointer hover:scale-[1.03] transition-transform"
               >
                 <div className="text-xs font-bold text-orange-400">{t('podium', 'bronzeTitle')}</div>
@@ -668,8 +678,8 @@ export default function LeaderboardPage() {
                   return (
                     <tr
                       key={entry.profile.id}
-                      onMouseEnter={() => {
-                        if (entry.rank <= 3) triggerRankConfetti(entry.rank);
+                      onMouseEnter={(e) => {
+                        if (entry.rank <= 3) triggerRankConfetti(entry.rank, e);
                       }}
                       className={`hover:bg-slate-800/40 transition-colors ${
                         isCurrentUser ? 'bg-[#00BCEB]/10 border-l-4 border-l-[#00BCEB]' : ''
@@ -748,8 +758,8 @@ export default function LeaderboardPage() {
                 {teamLeaderboard.map((entry) => (
                   <tr
                     key={entry.team.id}
-                    onMouseEnter={() => {
-                      if (entry.rank <= 3) triggerRankConfetti(entry.rank);
+                    onMouseEnter={(e) => {
+                      if (entry.rank <= 3) triggerRankConfetti(entry.rank, e);
                     }}
                     className="hover:bg-slate-800/40 transition-colors"
                   >
@@ -764,7 +774,7 @@ export default function LeaderboardPage() {
                       </div>
                     </td>
                     <td className="py-4 px-4 text-center">
-                      <span className="px-2.5 py-1 rounded-full bg-slate-800 text-xs font-semibold text-slate-300">
+                      <span className="px-2.5 py-1 rounded-full bg-[#00BCEB]/10 text-[#00BCEB] border border-[#00BCEB]/30 text-xs font-semibold">
                         {entry.member_count} VĐV
                       </span>
                     </td>
