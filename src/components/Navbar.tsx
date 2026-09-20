@@ -10,7 +10,7 @@ import { CiscoOfficialLogo } from '@/components/CiscoLogo';
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
-  const { currentUser, isDemoMode, language, setLanguage, t } = useApp();
+  const { currentUser, isDemoMode, language, setLanguage, t, cloudStatus } = useApp();
 
   const navLinks = [
     { href: '/', label: t('nav', 'leaderboard'), icon: Trophy },
@@ -71,8 +71,37 @@ export const Navbar: React.FC = () => {
             })}
           </nav>
 
-          {/* User profile & Language selector */}
-          <div className="flex items-center space-x-3">
+          {/* User profile & Language selector & Cloud Status */}
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            {/* Cloud DB Status Indicator */}
+            <div
+              className={`hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-colors ${
+                cloudStatus === 'connected'
+                  ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-400'
+                  : cloudStatus === 'syncing'
+                  ? 'bg-amber-950/40 border-amber-500/30 text-amber-400'
+                  : 'bg-rose-950/40 border-rose-500/30 text-rose-400'
+              }`}
+              title={
+                cloudStatus === 'connected'
+                  ? 'Supabase Cloud Database: Đã kết nối và đồng bộ Realtime'
+                  : cloudStatus === 'syncing'
+                  ? 'Đang kiểm tra kết nối Cloud Database...'
+                  : 'Cảnh báo: Mất kết nối Cloud Database'
+              }
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  cloudStatus === 'connected'
+                    ? 'bg-emerald-400 animate-pulse'
+                    : cloudStatus === 'syncing'
+                    ? 'bg-amber-400 animate-spin'
+                    : 'bg-rose-400'
+                }`}
+              ></span>
+              <span>{cloudStatus === 'connected' ? 'Cloud DB' : cloudStatus === 'syncing' ? 'Syncing...' : 'DB Error'}</span>
+            </div>
+
             {/* Language dropdown */}
             <div className="flex items-center space-x-1 bg-slate-900 px-2.5 py-1 rounded-xl border border-slate-800 text-xs font-bold text-slate-200 hover:border-slate-700 transition-colors">
               <Globe className="w-3.5 h-3.5 text-[#00BCEB]" />

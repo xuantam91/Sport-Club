@@ -37,6 +37,10 @@ interface AppContextType {
   setDemoMode: (val: boolean) => void;
   refreshData: () => Promise<void>;
   syncStravaActivities: (givenToken?: string, targetUser?: Profile | null) => Promise<void>;
+  clearAllData: () => Promise<void>;
+  cloudStatus: 'connected' | 'error' | 'syncing';
+  cloudAlert: { type: 'success' | 'error' | 'warning'; message: string } | null;
+  dismissCloudAlert: () => void;
   logout: () => void;
 }
 
@@ -52,6 +56,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [showOnboardingModal, setShowOnboardingModal] = useState<boolean>(false);
+  const [cloudStatus, setCloudStatus] = useState<'connected' | 'error' | 'syncing'>('syncing');
+  const [cloudAlert, setCloudAlert] = useState<{ type: 'success' | 'error' | 'warning'; message: string } | null>(null);
+
+  const dismissCloudAlert = () => setCloudAlert(null);
 
   useEffect(() => {
     const savedLang = localStorage.getItem('cisco_sport_lang') as Language;
@@ -390,16 +398,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
 
-      // Read profiles from localStorage without deleting any connected user profiles
-      const savedProfilesStr = localStorage.getItem('cisco_sport_profiles');
-      if (savedProfilesStr) {
-        try {
-          const parsedProfiles: Profile[] = JSON.parse(savedProfilesStr);
-          if (Array.isArray(parsedProfiles) && parsedProfiles.length > 0) {
-            setProfiles(parsedProfiles);
-          }
-        } catch (e) {}
-      }
+      // Dọn bỏ cache rác ở localStorage cũ để Cloud Database là nguồn dữ liệu duy nhất
+      localStorage.removeItem('cisco_sport_profiles');
+      localStorage.removeItem('cisco_sport_activities');
 
       const savedTeamsStr = localStorage.getItem('cisco_sport_teams');
       if (savedTeamsStr) {
@@ -413,22 +414,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch (e) {}
       } else {
         setTeams([]);
-      }
-
-      const savedActivitiesStr = localStorage.getItem('cisco_sport_activities');
-      if (savedActivitiesStr) {
-        try {
-          const parsedActivities: Activity[] = JSON.parse(savedActivitiesStr);
-          if (Array.isArray(parsedActivities)) {
-            const realActivities = parsedActivities.filter(
-              (a) => !['act-1', 'act-2', 'act-3', 'act-4', 'act-5'].includes(a.id)
-            );
-            setActivities(realActivities);
-            localStorage.setItem('cisco_sport_activities', JSON.stringify(realActivities));
-          }
-        } catch (e) {}
-      } else {
-        setActivities([]);
       }
 
       const savedChallengesStr = localStorage.getItem('cisco_sport_challenges');
@@ -445,7 +430,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setChallenges([]);
       }
 
-      // Nạp dữ liệu đồng bộ từ Server Storage để hiển thị đầy đủ tất cả VĐV đã kết nối trên mọi thiết bị
+      // Nạp dữ liệu trực tiếp từ Cloud Database (Supabase) để hiển thị đồng bộ trên mọi thiết bị và ẩn danh
       const fetchServerData = async () => {
         try {
           const [profRes, actRes] = await Promise.all([
@@ -455,41 +440,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const profData = await profRes.json();
           const actData = await actRes.json();
 
-          if (profData.success && Array.isArray(profData.profiles) && profData.profiles.length > 0) {
-            setProfiles((prev) => {
-              const pMap = new Map<string, Profile>();
-              profData.profiles.forEach((p: Profile) => pMap.set(p.id, p));
-              prev.forEach((p) => {
-                if (!pMap.has(p.id)) pMap.set(p.id, p);
-              });
-              const merged = Array.from(pMap.values());
-              if (typeof window !== 'undefined') {
-                localStorage.setItem('cisco_sport_profiles', JSON.stringify(merged));
-              }
-              return merged;
-            });
+          if (profData.success && Array.isArray(profData.profiles)) {
+            setProfiles(profData.profiles);
+            setCloudStatus('connected');
+          } else {
+            setCloudStatus('error');
           }
 
-          if (actData.success && Array.isArray(actData.activities) && actData.activities.length > 0) {
-            setActivities((prev) => {
-              const aMap = new Map<string, Activity>();
-              actData.activities.forEach((a: Activity) => {
-                const key = String(a.strava_activity_id || a.id);
-                aMap.set(key, a);
-              });
-              prev.forEach((a) => {
-                const key = String(a.strava_activity_id || a.id);
-                if (!aMap.has(key)) aMap.set(key, a);
-              });
-              const merged = Array.from(aMap.values());
-              if (typeof window !== 'undefined') {
-                localStorage.setItem('cisco_sport_activities', JSON.stringify(merged));
-              }
-              return merged;
-            });
+          if (actData.success && Array.isArray(actData.activities)) {
+            setActivities(actData.activities);
           }
         } catch (e) {
           console.error('Lỗi nạp dữ liệu server:', e);
+          setCloudStatus('error');
         }
       };
 
@@ -508,63 +471,59 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const numStravaId = stravaId ? Number(stravaId) : null;
         const isStravaAdmin = numStravaId === 162869534 || String(stravaId) === '162869534';
 
-        setProfiles((prev) => {
-          // Tìm VĐV hiện có theo strava_id hoặc email
-          const existingIndex = prev.findIndex(
-            (p) => (numStravaId && p.strava_id === numStravaId) || (stravaEmail && p.email?.toLowerCase() === stravaEmail.toLowerCase())
-          );
+        const newId = numStravaId ? `usr-strava-${numStravaId}` : `usr-${Date.now()}`;
+        const updatedUser: Profile = {
+          id: newId,
+          role: isStravaAdmin ? 'admin' : 'member',
+          full_name: stravaName || 'Vận Động Viên Cisco',
+          avatar_url: stravaAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+          username: stravaUsername || (stravaName ? stravaName.toLowerCase().replace(/\s+/g, '.') : `athlete.${numStravaId}`),
+          email: stravaEmail || `athlete.${numStravaId}@cisco.com`,
+          gender: stravaGender,
+          strava_id: numStravaId || undefined,
+          strava_access_token: stravaToken || undefined,
+          created_at: new Date().toISOString(),
+        };
 
-          let updatedUser: Profile;
+        setCurrentUser(updatedUser);
+        localStorage.setItem('cisco_sport_user', JSON.stringify(updatedUser));
+        if (stravaToken) {
+          localStorage.setItem(`cisco_strava_token_${updatedUser.id}`, stravaToken);
+          localStorage.setItem('cisco_strava_token', stravaToken);
+          syncStravaActivities(stravaToken, updatedUser);
+        }
+        setShowOnboardingModal(true);
 
-          if (existingIndex >= 0) {
-            // Cập nhật thông tin cho VĐV đã tồn tại
-            const existing = prev[existingIndex];
-            updatedUser = {
-              ...existing,
-              role: isStravaAdmin ? 'admin' : existing.role || 'member',
-              strava_id: numStravaId || existing.strava_id,
-              strava_access_token: stravaToken || existing.strava_access_token,
-            };
-            const updatedList = [...prev];
-            updatedList[existingIndex] = updatedUser;
-            localStorage.setItem('cisco_sport_profiles', JSON.stringify(updatedList));
-            setCurrentUser(updatedUser);
-            localStorage.setItem('cisco_sport_user', JSON.stringify(updatedUser));
-            if (stravaToken) {
-              localStorage.setItem(`cisco_strava_token_${updatedUser.id}`, stravaToken);
-              localStorage.setItem('cisco_strava_token', stravaToken);
-              syncStravaActivities(stravaToken, updatedUser);
+        // Đẩy lên Cloud Database và kiểm tra phản hồi
+        fetch('/api/profiles', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedUser),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success && Array.isArray(data.profiles)) {
+              setProfiles(data.profiles);
+              setCloudStatus('connected');
+              setCloudAlert({
+                type: 'success',
+                message: `Đã kết nối VĐV "${updatedUser.full_name}" lên Cloud Database thành công! Dữ liệu đã sẵn sàng trên mọi thiết bị.`,
+              });
+            } else {
+              setCloudStatus('error');
+              setCloudAlert({
+                type: 'error',
+                message: `CẢNH BÁO: Dữ liệu chưa vào được Cloud Database! Lỗi: ${data.error || 'Mất kết nối Supabase'}`,
+              });
             }
-            setShowOnboardingModal(false);
-            return updatedList;
-          } else {
-            // Tạo mới VĐV hoàn toàn trong hệ thống lần đầu kết nối Strava
-            const newId = numStravaId ? `usr-strava-${numStravaId}` : `usr-${Date.now()}`;
-            updatedUser = {
-              id: newId,
-              role: isStravaAdmin ? 'admin' : 'member',
-              full_name: stravaName || 'Vận Động Viên Cisco',
-              avatar_url: stravaAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-              username: stravaUsername || (stravaName ? stravaName.toLowerCase().replace(/\s+/g, '.') : `athlete.${numStravaId}`),
-              email: stravaEmail || `athlete.${numStravaId}@cisco.com`,
-              gender: stravaGender,
-              strava_id: numStravaId || undefined,
-              strava_access_token: stravaToken || undefined,
-              created_at: new Date().toISOString(),
-            };
-            const updatedList = [updatedUser, ...prev.filter((p) => p.id !== newId)];
-            localStorage.setItem('cisco_sport_profiles', JSON.stringify(updatedList));
-            setCurrentUser(updatedUser);
-            localStorage.setItem('cisco_sport_user', JSON.stringify(updatedUser));
-            if (stravaToken) {
-              localStorage.setItem(`cisco_strava_token_${updatedUser.id}`, stravaToken);
-              localStorage.setItem('cisco_strava_token', stravaToken);
-              syncStravaActivities(stravaToken, updatedUser);
-            }
-            setShowOnboardingModal(true);
-            return updatedList;
-          }
-        });
+          })
+          .catch((err) => {
+            setCloudStatus('error');
+            setCloudAlert({
+              type: 'error',
+              message: `CẢNH BÁO MẠNG: Không thể kết nối tới Cloud Database (${err.message})`,
+            });
+          });
 
         // Xóa query parameters trên URL để tránh lặp lại logic khi F5 lại trang
         if (typeof window !== 'undefined') {
@@ -605,22 +564,67 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem('cisco_sport_user', JSON.stringify(updatedProfile));
     }
 
-    setProfiles((prev) => {
-      const updated = prev.map((p) => (p.id === currentUser.id ? updatedProfile : p));
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('cisco_sport_profiles', JSON.stringify(updated));
-      }
-      return updated;
-    });
+    setProfiles((prev) => prev.map((p) => (p.id === currentUser.id ? updatedProfile : p)));
 
-    // Lưu Profile lên Server Storage
+    // Lưu Profile lên Cloud Database
     fetch('/api/profiles', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updatedProfile),
-    }).catch(() => {});
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.profiles)) {
+          setProfiles(data.profiles);
+          setCloudStatus('connected');
+          setCloudAlert({
+            type: 'success',
+            message: `Hồ sơ VĐV "${updatedProfile.full_name}" đã lưu thành công lên Cloud Database!`,
+          });
+        } else {
+          setCloudStatus('error');
+          setCloudAlert({
+            type: 'error',
+            message: `CẢNH BÁO: Không thể lưu hồ sơ lên Cloud Database: ${data.error || 'Lỗi server'}`,
+          });
+        }
+      })
+      .catch((err) => {
+        setCloudStatus('error');
+        setCloudAlert({
+          type: 'error',
+          message: `CẢNH BÁO MẠNG: Không thể kết nối tới Cloud Database (${err.message})`,
+        });
+      });
 
     setShowOnboardingModal(false);
+  };
+
+  const clearAllData = async () => {
+    try {
+      const res = await fetch('/api/reset-data', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setProfiles([]);
+        setActivities([]);
+        setCurrentUser(null);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('cisco_sport_user');
+          localStorage.removeItem('cisco_sport_profiles');
+          localStorage.removeItem('cisco_sport_activities');
+          localStorage.removeItem('cisco_strava_token');
+        }
+        setCloudAlert({
+          type: 'success',
+          message: 'Đã dọn sạch toàn bộ dữ liệu trên Cloud Database! Hệ thống đã trắng hoàn toàn để sẵn sàng liên kết mới.',
+        });
+      }
+    } catch (e: any) {
+      setCloudAlert({
+        type: 'error',
+        message: `Lỗi dọn sạch database: ${e.message}`,
+      });
+    }
   };
 
   const refreshData = async () => {
@@ -677,6 +681,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setDemoMode,
         refreshData,
         syncStravaActivities,
+        clearAllData,
+        cloudStatus,
+        cloudAlert,
+        dismissCloudAlert,
         logout,
       }}
     >
