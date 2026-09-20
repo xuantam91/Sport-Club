@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { Profile, Activity, Team, Challenge } from '@/types';
-import { fetchStravaActivities, calculatePoints } from '@/lib/strava';
+import { fetchStravaActivities, calculatePoints, mapSportType } from '@/lib/strava';
 import { DEFAULT_SPORT_RULES } from '@/lib/demoData';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 
@@ -60,26 +60,35 @@ export const upsertServerProfile = async (profile: Profile): Promise<Profile[]> 
       const upsertData: any = {
         id: profile.id,
         full_name: profile.full_name,
-        username: profile.username || null,
         email: profile.email || null,
         avatar_url: profile.avatar_url || null,
-        gender: profile.gender || 'male',
         role: profile.role || 'member',
         strava_id: profile.strava_id || null,
-        strava_access_token: profile.strava_access_token || null,
         updated_at: new Date().toISOString(),
       };
+      if (profile.strava_access_token) {
+        upsertData.strava_access_token = profile.strava_access_token;
+      }
+      if (profile.department) {
+        upsertData.department = profile.department;
+      }
       if (profile.team_id) {
         upsertData.team_id = profile.team_id;
       }
 
-      await supabase.from('profiles').upsert(upsertData, {
+      const { error } = await supabase.from('profiles').upsert(upsertData, {
         onConflict: profile.strava_id ? 'strava_id' : 'id',
       });
+
+      if (error) {
+        console.error('Supabase upsert profile error:', error);
+        throw new Error(error.message);
+      }
 
       return await getServerProfiles();
     } catch (e) {
       console.error('Supabase upsert profile error:', e);
+      throw e;
     }
   }
 
@@ -148,22 +157,28 @@ export const upsertServerActivities = async (newActs: Activity[]): Promise<Activ
         strava_activity_id: act.strava_activity_id,
         name: act.name,
         type: act.type,
-        distance: act.distance,
-        moving_time: act.moving_time,
-        elapsed_time: act.elapsed_time,
-        total_elevation_gain: act.total_elevation_gain,
-        calculated_points: act.calculated_points,
-        start_date: act.start_date,
+        distance: act.distance || 0,
+        moving_time: act.moving_time || 0,
+        elapsed_time: act.elapsed_time || 0,
+        total_elevation_gain: act.total_elevation_gain || 0,
+        calculated_points: act.calculated_points || 0,
+        start_date: act.start_date || new Date().toISOString(),
         polyline: act.polyline || null,
       }));
 
-      await supabase.from('activities').upsert(upsertRows, {
+      const { error } = await supabase.from('activities').upsert(upsertRows, {
         onConflict: 'strava_activity_id',
       });
+
+      if (error) {
+        console.error('Supabase upsert activities error:', error);
+        throw new Error(error.message);
+      }
 
       return await getServerActivities();
     } catch (e) {
       console.error('Supabase upsert activities error:', e);
+      throw e;
     }
   }
 
@@ -207,8 +222,13 @@ export const syncAthleteStravaActivitiesOnServer = async (
     if (!Array.isArray(stravaActs) || stravaActs.length === 0) return [];
 
     const formattedActs: Activity[] = stravaActs.map((act: any) => {
-      const type = act.type || 'Run';
-      const points = calculatePoints(type, act.distance || 0, act.total_elevation_gain || 0, DEFAULT_SPORT_RULES);
+      const sportCategory = mapSportType(act.type, act.sport_type);
+      const points = calculatePoints(
+        sportCategory,
+        act.distance || 0,
+        act.total_elevation_gain || 0,
+        DEFAULT_SPORT_RULES
+      );
 
       return {
         id: `act-strava-${act.id}`,
@@ -216,7 +236,7 @@ export const syncAthleteStravaActivitiesOnServer = async (
         profile: profile,
         strava_activity_id: act.id,
         name: act.name || 'Hoạt động Strava',
-        type: type,
+        type: sportCategory,
         distance: act.distance || 0,
         moving_time: act.moving_time || 0,
         elapsed_time: act.elapsed_time || 0,

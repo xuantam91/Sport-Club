@@ -509,6 +509,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 type: 'success',
                 message: `Đã kết nối VĐV "${updatedUser.full_name}" lên Cloud Database thành công! Dữ liệu đã sẵn sàng trên mọi thiết bị.`,
               });
+              // Nạp bài tập từ Cloud ngay sau khi kết nối
+              fetch('/api/activities')
+                .then((r) => r.json())
+                .then((aData) => {
+                  if (aData.success && Array.isArray(aData.activities)) {
+                    setActivities(aData.activities);
+                  }
+                })
+                .catch(() => {});
             } else {
               setCloudStatus('error');
               setCloudAlert({
@@ -638,6 +647,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.error('Lỗi sync-all:', e);
     }
     await syncStravaActivities();
+
+    try {
+      const [profRes, actRes] = await Promise.all([
+        fetch('/api/profiles'),
+        fetch('/api/activities'),
+      ]);
+      const profData = await profRes.json();
+      const actData = await actRes.json();
+
+      if (profData.success && Array.isArray(profData.profiles)) {
+        setProfiles(profData.profiles);
+        setCloudStatus('connected');
+      }
+      if (actData.success && Array.isArray(actData.activities)) {
+        setActivities(actData.activities);
+      }
+    } catch (e) {
+      console.error('Lỗi nạp lại server data trong refreshData:', e);
+    }
   };
 
   const logout = () => {

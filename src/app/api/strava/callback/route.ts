@@ -3,6 +3,8 @@ import { exchangeStravaToken } from '@/lib/strava';
 import { upsertServerProfile, syncAthleteStravaActivitiesOnServer } from '@/lib/serverStore';
 import { Profile } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
@@ -45,11 +47,13 @@ export async function GET(request: Request) {
 
     await upsertServerProfile(newProfile);
 
-    // Kéo ngay hoạt động Strava của VĐV này về Server
+    // Kéo ngay hoạt động Strava của VĐV này về Server và chờ hoàn tất (bắt buộc await trên Vercel Serverless)
     if (accessToken) {
-      syncAthleteStravaActivitiesOnServer(newProfile, accessToken).catch((err) => {
+      try {
+        await syncAthleteStravaActivitiesOnServer(newProfile, accessToken);
+      } catch (err) {
         console.error('Lỗi sync hoạt động ban đầu:', err);
-      });
+      }
     }
 
     const profileUrl = new URL('/profile', request.url);

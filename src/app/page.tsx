@@ -76,7 +76,7 @@ function AnimatedCounter({ value, duration = 1200, suffix = '' }: { value: numbe
 export default function LeaderboardPage() {
   const { profiles, teams, activities, currentUser, t } = useApp();
 
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('month');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const [sportFilter, setSportFilter] = useState<SportType>('All');
   const [viewMode, setViewMode] = useState<'individual' | 'team'>('individual');
   const lastConfettiRef = useRef<number>(0);

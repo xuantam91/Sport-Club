@@ -3,6 +3,16 @@ import { SportRule, SportType } from '@/types';
 export const STRAVA_CLIENT_ID = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID || '161019';
 export const STRAVA_CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET || '5dc1e3005697cbcfc1282bc208ad3025cc519fb8';
 
+export function mapSportType(type: string, sportType?: string): 'Run' | 'Ride' | 'Walk' | 'Swim' | 'Hike' {
+  const raw = (sportType || type || '').toLowerCase();
+  if (raw.includes('run')) return 'Run';
+  if (raw.includes('ride') || raw.includes('bike') || raw.includes('cycling')) return 'Ride';
+  if (raw.includes('walk')) return 'Walk';
+  if (raw.includes('swim')) return 'Swim';
+  if (raw.includes('hike')) return 'Hike';
+  return 'Run';
+}
+
 /**
  * Tạo URL ủy quyền đăng nhập Strava OAuth 2.0 (Hỗ trợ mở App Strava trên Mobile)
  */
