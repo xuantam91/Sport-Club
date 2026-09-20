@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getServerActivities, upsertServerActivities } from '@/lib/serverStore';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
   try {
     const activities = await getServerActivities();

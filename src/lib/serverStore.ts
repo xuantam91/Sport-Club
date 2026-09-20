@@ -27,7 +27,7 @@ export const getServerProfiles = async (): Promise<Profile[]> => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*, team:teams(*)')
+        .select('*, team:teams!profiles_team_id_fkey(*)')
         .order('created_at', { ascending: false });
 
       if (!error && Array.isArray(data)) {
