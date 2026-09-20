@@ -123,14 +123,32 @@ FOR EACH ROW
 EXECUTE FUNCTION calculate_activity_points();
 
 
--- 6. ENABLE ROW LEVEL SECURITY (RLS)
+-- 6. BẢNG CHALLENGES (Giải đấu & Sự kiện thể thao)
+CREATE TABLE IF NOT EXISTS public.challenges (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  title TEXT NOT NULL,
+  description TEXT,
+  type TEXT NOT NULL DEFAULT 'Run',
+  target_km FLOAT NOT NULL DEFAULT 100,
+  start_date TEXT NOT NULL,
+  end_date TEXT NOT NULL,
+  banner_url TEXT,
+  status TEXT NOT NULL DEFAULT 'active',
+  participant_ids JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 7. ENABLE ROW LEVEL SECURITY (RLS)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.teams ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.activities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sport_rules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.challenges ENABLE ROW LEVEL SECURITY;
 
 -- Cho phép đọc và ghi dữ liệu cho ứng dụng web
 CREATE POLICY "Allow all for profiles" ON public.profiles FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for teams" ON public.teams FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for activities" ON public.activities FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for sport rules" ON public.sport_rules FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for challenges" ON public.challenges FOR ALL USING (true) WITH CHECK (true);
+

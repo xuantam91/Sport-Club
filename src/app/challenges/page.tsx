@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Challenge, SportType } from '@/types';
-import { Trophy, PlusCircle, Users, CheckCircle2, Calendar, Target, ArrowRight, Edit3, Eye, ShieldCheck, Flame, Sparkles, Medal, Crown, Clock, X, Upload, Image as ImageIcon, Check, Share2, Copy, Link as LinkIcon } from 'lucide-react';
+import { Challenge, SportType, Profile, Activity } from '@/types';
+import { Trophy, PlusCircle, Users, CheckCircle2, Calendar, Target, ArrowRight, Edit3, Eye, ShieldCheck, Flame, Sparkles, Medal, Crown, Clock, X, Upload, Image as ImageIcon, Check, Share2, Copy, Link as LinkIcon, LogOut } from 'lucide-react';
 
 const PRESET_BANNERS = [
   { id: 'hero', name: '🏃 Chạy Bộ Đêm', url: '/images/cisco_sports_hero.jpg' },
@@ -14,7 +14,7 @@ const PRESET_BANNERS = [
 ];
 
 export default function ChallengesPage() {
-  const { challenges, createChallenge, updateChallenge, joinChallenge, currentUser, profiles, activities, t } = useApp();
+  const { challenges, createChallenge, updateChallenge, joinChallenge, leaveChallenge, currentUser, profiles, activities, t } = useApp();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(null);
@@ -162,40 +162,94 @@ export default function ChallengesPage() {
 
   const getParticipantProgress = (ch: Challenge, userId?: string) => {
     if (!userId) return { km: '0.0', pct: 0 };
-    const userActs = activities.filter(
-      (a) =>
-        (a.profile_id === userId || a.profile?.id === userId) &&
-        (ch.type === 'All' || a.type.toLowerCase() === ch.type.toLowerCase())
-    );
-    const totalKm = userActs.reduce((acc, a) => acc + a.distance, 0) / 1000;
+    const userProfile = profiles.find((p) => p.id === userId) || (currentUser?.id === userId ? currentUser : undefined);
+
+    const userActs = activities.filter((a) => {
+      if (['act-1', 'act-2', 'act-3', 'act-4', 'act-5'].includes(a.id)) return false;
+
+      const matchesUser =
+        a.profile_id === userId ||
+        a.profile?.id === userId ||
+        (userProfile?.strava_id && a.profile?.strava_id === userProfile.strava_id);
+      if (!matchesUser) return false;
+
+      if (ch.type !== 'All' && a.type.toLowerCase() !== ch.type.toLowerCase()) return false;
+
+      if (a.start_date) {
+        const actDate = a.start_date.split('T')[0];
+        if (ch.start_date && actDate < ch.start_date) return false;
+        if (ch.end_date && actDate > ch.end_date) return false;
+      }
+      return true;
+    });
+
+    const uniqueMap = new Map<string, Activity>();
+    userActs.forEach((a) => {
+      const key = String(a.strava_activity_id || a.id);
+      if (!uniqueMap.has(key)) uniqueMap.set(key, a);
+    });
+    const uniqueActs = Array.from(uniqueMap.values());
+
+    const totalKm = uniqueActs.reduce((acc, a) => acc + (a.distance || 0), 0) / 1000;
     const pct = Math.min(100, Math.round((totalKm / ch.target_km) * 100));
     return { km: totalKm.toFixed(1), pct };
   };
 
   // Tính danh sách thống kê xếp hạng VĐV tham gia giải đấu (Sắp xếp từ cao xuống thấp)
   const getChallengeLeaderboard = (ch: Challenge) => {
-    const participants = profiles.filter((p) => ch.participant_ids.includes(p.id));
+    const rawParticipants = profiles.filter((p) => ch.participant_ids.includes(p.id));
+    if (currentUser && ch.participant_ids.includes(currentUser.id) && !rawParticipants.some((p) => p.id === currentUser.id)) {
+      rawParticipants.push(currentUser);
+    }
+
+    // Khử trùng lặp VĐV theo strava_id hoặc id
+    const uniqueUserMap = new Map<string, Profile>();
+    rawParticipants.forEach((p) => {
+      const key = p.strava_id ? `strava_${p.strava_id}` : p.id;
+      if (!uniqueUserMap.has(key)) uniqueUserMap.set(key, p);
+    });
+    const participants = Array.from(uniqueUserMap.values());
 
     const leaderboard = participants.map((profile) => {
-      const userActs = activities.filter(
-        (a) =>
-          (a.profile_id === profile.id || a.profile?.id === profile.id) &&
-          (ch.type === 'All' || a.type.toLowerCase() === ch.type.toLowerCase())
-      );
+      const userActs = activities.filter((a) => {
+        if (['act-1', 'act-2', 'act-3', 'act-4', 'act-5'].includes(a.id)) return false;
 
-      const totalDistMeters = userActs.reduce((sum, a) => sum + a.distance, 0);
+        const matchesUser =
+          a.profile_id === profile.id ||
+          a.profile?.id === profile.id ||
+          (profile.strava_id && a.profile?.strava_id === profile.strava_id);
+        if (!matchesUser) return false;
+
+        if (ch.type !== 'All' && a.type.toLowerCase() !== ch.type.toLowerCase()) return false;
+
+        if (a.start_date) {
+          const actDate = a.start_date.split('T')[0];
+          if (ch.start_date && actDate < ch.start_date) return false;
+          if (ch.end_date && actDate > ch.end_date) return false;
+        }
+        return true;
+      });
+
+      const uniqueActMap = new Map<string, Activity>();
+      userActs.forEach((a) => {
+        const key = String(a.strava_activity_id || a.id);
+        if (!uniqueActMap.has(key)) uniqueActMap.set(key, a);
+      });
+      const uniqueActs = Array.from(uniqueActMap.values());
+
+      const totalDistMeters = uniqueActs.reduce((sum, a) => sum + (a.distance || 0), 0);
       const totalKm = totalDistMeters / 1000;
-      const totalPts = userActs.reduce((sum, a) => sum + a.calculated_points, 0);
-      const totalElev = userActs.reduce((sum, a) => sum + (a.total_elevation_gain || 0), 0);
+      const totalPts = uniqueActs.reduce((sum, a) => sum + (a.calculated_points || 0), 0);
+      const totalElev = uniqueActs.reduce((sum, a) => sum + (a.total_elevation_gain || 0), 0);
       const pct = Math.min(100, Math.round((totalKm / ch.target_km) * 100));
 
       return {
         profile,
         totalKm,
         totalPts,
-        totalElev,
+        totalElev: Math.round(totalElev),
         pct,
-        workoutCount: userActs.length,
+        workoutCount: uniqueActs.length,
         isCompleted: totalKm >= ch.target_km,
       };
     });
@@ -650,7 +704,28 @@ export default function ChallengesPage() {
                     </button>
                   )}
 
-                  {!selectedChallenge.participant_ids.includes(currentUser?.id || '') && (
+                  {selectedChallenge.participant_ids.includes(currentUser?.id || '') ? (
+                    <div className="flex items-center space-x-2">
+                      <span className="flex items-center gap-1 text-xs font-extrabold text-emerald-400 bg-emerald-500/10 px-3 py-2 rounded-xl border border-emerald-500/30">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Đã tham gia
+                      </span>
+                      <button
+                        onClick={() => {
+                          if (confirm('Bạn có chắc chắn muốn rời khỏi giải đấu này không?')) {
+                            leaveChallenge(selectedChallenge.id);
+                            setSelectedChallenge({
+                              ...selectedChallenge,
+                              participant_ids: selectedChallenge.participant_ids.filter((id) => id !== (currentUser?.id || '')),
+                            });
+                          }
+                        }}
+                        className="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-bold text-xs border border-rose-500/30 flex items-center space-x-1 transition-colors"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Rời Giải</span>
+                      </button>
+                    </div>
+                  ) : (
                     <button
                       onClick={() => {
                         joinChallenge(selectedChallenge.id);
@@ -668,12 +743,41 @@ export default function ChallengesPage() {
                 </div>
               </div>
 
+              {/* Summary Stats Cards */}
+              {(() => {
+                const lb = getChallengeLeaderboard(selectedChallenge);
+                const totalKmAll = lb.reduce((s, e) => s + e.totalKm, 0);
+                const totalPtsAll = lb.reduce((s, e) => s + e.totalPts, 0);
+                const completedCount = lb.filter((e) => e.isCompleted).length;
+
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
+                    <div className="text-center p-2 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">VĐV Tham Gia</p>
+                      <p className="text-lg font-black text-white mt-0.5">{lb.length} <span className="text-xs font-normal text-slate-400">VĐV</span></p>
+                    </div>
+                    <div className="text-center p-2 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Hoàn Thành Mục Tiêu</p>
+                      <p className="text-lg font-black text-emerald-400 mt-0.5">{completedCount} <span className="text-xs font-normal text-slate-400">VĐV</span></p>
+                    </div>
+                    <div className="text-center p-2 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Tổng Cự Ly Tích Lũy</p>
+                      <p className="text-lg font-black text-[#00BCEB] mt-0.5">{totalKmAll.toFixed(1)} <span className="text-xs font-normal text-slate-400">km</span></p>
+                    </div>
+                    <div className="text-center p-2 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Tổng Điểm Thưởng</p>
+                      <p className="text-lg font-black text-[#CCFF00] mt-0.5">{Math.round(totalPtsAll * 10) / 10} <span className="text-xs font-normal text-slate-400">pts</span></p>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Leaderboard Table Header */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="font-extrabold text-lg text-white flex items-center gap-2">
                     <Trophy className="w-5 h-5 text-[#CCFF00]" />
-                    <span>Thống Kê Thành Tích VĐV Tham Gia ({selectedChallenge.participant_ids.length} VĐV)</span>
+                    <span>Thống Kê Thành Tích VĐV Tham Gia ({getChallengeLeaderboard(selectedChallenge).length} VĐV)</span>
                   </h3>
                   <span className="text-xs text-slate-400 font-medium">Sắp xếp từ thành tích cao nhất đến thấp nhất</span>
                 </div>

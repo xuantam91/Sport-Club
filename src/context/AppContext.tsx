@@ -27,6 +27,7 @@ interface AppContextType {
   createChallenge: (ch: Omit<Challenge, 'id' | 'participant_ids' | 'status'>) => Challenge;
   updateChallenge: (id: string, updatedData: Partial<Challenge>) => void;
   joinChallenge: (challengeId: string) => void;
+  leaveChallenge: (challengeId: string) => void;
   updateMemberRole: (userId: string, role: UserRole) => void;
   assignMemberTeam: (userId: string, teamId: string) => void;
   randomTeamDraft: (memberIds: string[], targetTeamIds: string[]) => void;
@@ -357,17 +358,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return updated;
     });
+
+    // Lưu giải đấu lên server
+    fetch('/api/challenges', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCh),
+    }).catch((e) => console.error('Lỗi lưu challenge lên server:', e));
+
     return newCh;
   };
 
   const updateChallenge = (id: string, updatedData: Partial<Challenge>) => {
+    let updatedItem: Challenge | undefined;
     setChallenges((prev) => {
-      const updated = prev.map((c) => (c.id === id ? { ...c, ...updatedData } : c));
+      const updated = prev.map((c) => {
+        if (c.id === id) {
+          updatedItem = { ...c, ...updatedData };
+          return updatedItem;
+        }
+        return c;
+      });
       if (typeof window !== 'undefined') {
         localStorage.setItem('cisco_sport_challenges', JSON.stringify(updated));
       }
       return updated;
     });
+
+    if (updatedItem) {
+      fetch('/api/challenges', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedItem),
+      }).catch((e) => console.error('Lỗi update challenge lên server:', e));
+    }
   };
 
   const joinChallenge = (challengeId: string) => {
@@ -384,6 +408,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return updated;
     });
+
+    fetch('/api/challenges', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ challengeId, joinUserId: currentUser.id }),
+    }).catch((e) => console.error('Lỗi join challenge lên server:', e));
+  };
+
+  const leaveChallenge = (challengeId: string) => {
+    if (!currentUser) return;
+    setChallenges((prev) => {
+      const updated = prev.map((c) => {
+        if (c.id === challengeId) {
+          return { ...c, participant_ids: c.participant_ids.filter((id) => id !== currentUser.id) };
+        }
+        return c;
+      });
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cisco_sport_challenges', JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    fetch('/api/challenges', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ challengeId, leaveUserId: currentUser.id }),
+    }).catch((e) => console.error('Lỗi leave challenge lên server:', e));
   };
 
   const updateMemberRole = (userId: string, role: UserRole) => {
@@ -519,14 +571,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Nạp dữ liệu trực tiếp từ Cloud Database (Supabase) để hiển thị đồng bộ trên mọi thiết bị và ẩn danh
       const fetchServerData = async () => {
         try {
-          const [profRes, actRes, teamRes] = await Promise.all([
+          const [profRes, actRes, teamRes, chRes] = await Promise.all([
             fetch('/api/profiles'),
             fetch('/api/activities'),
             fetch('/api/teams'),
+            fetch('/api/challenges'),
           ]);
           const profData = await profRes.json();
           const actData = await actRes.json();
           const teamData = await teamRes.json();
+          const chData = await chRes.json();
 
           if (profData.success && Array.isArray(profData.profiles)) {
             setProfiles(profData.profiles);
@@ -588,6 +642,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
 
           setTeams(cloudTeams);
+
+          let cloudChallenges: Challenge[] = [];
+          if (chData.success && Array.isArray(chData.challenges)) {
+            cloudChallenges = chData.challenges;
+          }
+
+          // Đồng bộ giải đấu từ localStorage lên Cloud nếu Cloud chưa có
+          if (savedChallengesStr) {
+            try {
+              const localChs: Challenge[] = JSON.parse(savedChallengesStr);
+              if (Array.isArray(localChs)) {
+                for (const lc of localChs) {
+                  if (!['ch-1', 'ch-2', 'ch-3'].includes(lc.id) && !cloudChallenges.some((sc) => sc.id === lc.id)) {
+                    fetch('/api/challenges', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(lc),
+                    }).catch(() => {});
+                    cloudChallenges.push(lc);
+                  }
+                }
+              }
+            } catch (e) {}
+          }
+
+          setChallenges(cloudChallenges);
         } catch (e) {
           console.error('Lỗi nạp dữ liệu server:', e);
           setCloudStatus('error');
@@ -798,14 +878,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await syncStravaActivities();
 
     try {
-      const [profRes, actRes, teamRes] = await Promise.all([
+      const [profRes, actRes, teamRes, chRes] = await Promise.all([
         fetch('/api/profiles'),
         fetch('/api/activities'),
         fetch('/api/teams'),
+        fetch('/api/challenges'),
       ]);
       const profData = await profRes.json();
       const actData = await actRes.json();
       const teamData = await teamRes.json();
+      const chData = await chRes.json();
 
       if (profData.success && Array.isArray(profData.profiles)) {
         setProfiles(profData.profiles);
@@ -816,6 +898,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       if (teamData.success && Array.isArray(teamData.teams)) {
         setTeams(teamData.teams);
+      }
+      if (chData.success && Array.isArray(chData.challenges)) {
+        setChallenges(chData.challenges);
       }
     } catch (e) {
       console.error('Lỗi nạp lại server data trong refreshData:', e);
@@ -853,6 +938,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createChallenge,
         updateChallenge,
         joinChallenge,
+        leaveChallenge,
         updateMemberRole,
         assignMemberTeam,
         randomTeamDraft,

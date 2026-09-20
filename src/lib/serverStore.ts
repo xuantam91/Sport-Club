@@ -9,6 +9,7 @@ const DATA_DIR = path.join(process.cwd(), 'data');
 const PROFILES_FILE = path.join(DATA_DIR, 'profiles.json');
 const ACTIVITIES_FILE = path.join(DATA_DIR, 'activities.json');
 const TEAMS_FILE = path.join(DATA_DIR, 'teams.json');
+const CHALLENGES_FILE = path.join(DATA_DIR, 'challenges.json');
 
 const ensureDataDir = () => {
   try {
@@ -100,6 +101,92 @@ export const upsertServerTeam = async (team: Team): Promise<Team[]> => {
 
   try {
     fs.writeFileSync(TEAMS_FILE, JSON.stringify(updatedList, null, 2), 'utf-8');
+  } catch (e) {}
+
+  return updatedList;
+};
+
+/**
+ * Đọc tất cả Giải đấu (Challenges) đã lưu trên Cloud (Supabase) hoặc Local File
+ */
+export const getServerChallenges = async (): Promise<Challenge[]> => {
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('challenges')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && Array.isArray(data)) {
+        return data.map((d: any) => ({
+          ...d,
+          participant_ids: Array.isArray(d.participant_ids) ? d.participant_ids : [],
+        })) as Challenge[];
+      }
+    } catch (e) {
+      // Supabase table challenges might not exist yet
+    }
+  }
+
+  ensureDataDir();
+  if (!fs.existsSync(CHALLENGES_FILE)) {
+    return [];
+  }
+  try {
+    const raw = fs.readFileSync(CHALLENGES_FILE, 'utf-8');
+    const data = JSON.parse(raw);
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+/**
+ * Thêm hoặc Cập nhật Giải đấu trên Cloud (Supabase) hoặc Local File
+ */
+export const upsertServerChallenge = async (ch: Challenge): Promise<Challenge[]> => {
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const upsertData: any = {
+        id: ch.id,
+        title: ch.title,
+        description: ch.description || null,
+        type: ch.type || 'Run',
+        target_km: ch.target_km || 100,
+        start_date: ch.start_date,
+        end_date: ch.end_date,
+        banner_url: ch.banner_url || null,
+        status: ch.status || 'active',
+        participant_ids: ch.participant_ids || [],
+        created_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase.from('challenges').upsert(upsertData, {
+        onConflict: 'id',
+      });
+
+      if (!error) {
+        return await getServerChallenges();
+      }
+    } catch (e) {
+      // Supabase table challenges might not exist yet
+    }
+  }
+
+  ensureDataDir();
+  const list = await getServerChallenges();
+  const existingIdx = list.findIndex((c) => c.id === ch.id);
+
+  let updatedList: Challenge[];
+  if (existingIdx >= 0) {
+    list[existingIdx] = { ...list[existingIdx], ...ch };
+    updatedList = [...list];
+  } else {
+    updatedList = [ch, ...list];
+  }
+
+  try {
+    fs.writeFileSync(CHALLENGES_FILE, JSON.stringify(updatedList, null, 2), 'utf-8');
   } catch (e) {}
 
   return updatedList;

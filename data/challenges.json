@@ -1,0 +1,16 @@
+[
+  {
+    "id": "ch-cisco-marathon-2026",
+    "title": "CISCO GSC KINETIC MARATHON 2026 🏆",
+    "description": "Giải chạy việt dã thử thách 100km dành riêng cho các chiến binh Cisco GSC!",
+    "type": "Run",
+    "target_km": 100,
+    "start_date": "2026-09-01",
+    "end_date": "2026-10-31",
+    "banner_url": "/images/cisco_marathon.jpg",
+    "status": "active",
+    "participant_ids": [
+      "usr-strava-162869534"
+    ]
+  }
+]
