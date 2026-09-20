@@ -357,6 +357,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (typeof window !== 'undefined') {
             localStorage.setItem('cisco_sport_activities', JSON.stringify(merged));
           }
+
+          // Lưu lên Server Storage để tất cả các thiết bị cùng thấy bài tập
+          fetch('/api/activities', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ activities: newActs }),
+          }).catch(() => {});
+
           return merged;
         });
       }
@@ -437,6 +445,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setChallenges([]);
       }
 
+      // Nạp dữ liệu đồng bộ từ Server Storage để hiển thị đầy đủ tất cả VĐV đã kết nối trên mọi thiết bị
+      const fetchServerData = async () => {
+        try {
+          const [profRes, actRes] = await Promise.all([
+            fetch('/api/profiles'),
+            fetch('/api/activities'),
+          ]);
+          const profData = await profRes.json();
+          const actData = await actRes.json();
+
+          if (profData.success && Array.isArray(profData.profiles) && profData.profiles.length > 0) {
+            setProfiles((prev) => {
+              const pMap = new Map<string, Profile>();
+              profData.profiles.forEach((p: Profile) => pMap.set(p.id, p));
+              prev.forEach((p) => {
+                if (!pMap.has(p.id)) pMap.set(p.id, p);
+              });
+              const merged = Array.from(pMap.values());
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('cisco_sport_profiles', JSON.stringify(merged));
+              }
+              return merged;
+            });
+          }
+
+          if (actData.success && Array.isArray(actData.activities) && actData.activities.length > 0) {
+            setActivities((prev) => {
+              const aMap = new Map<string, Activity>();
+              actData.activities.forEach((a: Activity) => {
+                const key = String(a.strava_activity_id || a.id);
+                aMap.set(key, a);
+              });
+              prev.forEach((a) => {
+                const key = String(a.strava_activity_id || a.id);
+                if (!aMap.has(key)) aMap.set(key, a);
+              });
+              const merged = Array.from(aMap.values());
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('cisco_sport_activities', JSON.stringify(merged));
+              }
+              return merged;
+            });
+          }
+        } catch (e) {
+          console.error('Lỗi nạp dữ liệu server:', e);
+        }
+      };
+
+      fetchServerData();
+
       const params = new URLSearchParams(window.location.search);
       if (params.get('strava_connected') === '1') {
         const stravaName = params.get('name');
@@ -507,6 +565,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             return updatedList;
           }
         });
+
+        // Xóa query parameters trên URL để tránh lặp lại logic khi F5 lại trang
+        if (typeof window !== 'undefined') {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
       } else {
         const existingToken = localStorage.getItem('cisco_strava_token');
         if (existingToken) {
@@ -550,10 +613,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return updated;
     });
 
+    // Lưu Profile lên Server Storage
+    fetch('/api/profiles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedProfile),
+    }).catch(() => {});
+
     setShowOnboardingModal(false);
   };
 
   const refreshData = async () => {
+    try {
+      const res = await fetch('/api/strava/sync-all');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.activities)) {
+        setActivities(data.activities);
+      }
+    } catch (e) {
+      console.error('Lỗi sync-all:', e);
+    }
     await syncStravaActivities();
   };
 
