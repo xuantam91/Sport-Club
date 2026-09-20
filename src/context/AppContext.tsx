@@ -138,28 +138,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       member_count: 1,
       total_distance: 0,
       total_points: 0,
-      created_at: new Date().toISOString().split('T')[0],
+      created_at: new Date().toISOString(),
     };
 
     setTeams((prev) => [newTeam, ...prev]);
 
+    // Lưu team lên Cloud Database
+    fetch('/api/teams', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newTeam),
+    }).catch((e) => console.error('Lỗi lưu team lên server:', e));
+
     if (currentUser) {
-      const updatedUser = { ...currentUser, team_id: newTeam.id, team: newTeam, role: 'captain' as const };
+      const updatedUser: Profile = { ...currentUser, team_id: newTeam.id, team: newTeam, role: 'captain' as const };
       setCurrentUser(updatedUser);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('cisco_sport_user', JSON.stringify(updatedUser));
+        } catch (e) {}
+      }
       setProfiles((prev) => prev.map((p) => (p.id === currentUser.id ? updatedUser : p)));
+
+      // Lưu profile kèm team_id lên Cloud Database
+      fetch('/api/profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedUser),
+      }).catch((e) => console.error('Lỗi lưu profile team lên server:', e));
     }
 
     return newTeam;
   };
 
   const updateTeam = (teamId: string, updatedData: Partial<Team>) => {
+    let updatedTeamItem: Team | undefined;
     setTeams((prev) => {
-      const updated = prev.map((t) => (t.id === teamId ? { ...t, ...updatedData } : t));
+      const updated = prev.map((t) => {
+        if (t.id === teamId) {
+          updatedTeamItem = { ...t, ...updatedData };
+          return updatedTeamItem;
+        }
+        return t;
+      });
       if (typeof window !== 'undefined') {
         localStorage.setItem('cisco_sport_teams', JSON.stringify(updated));
       }
       return updated;
     });
+
+    if (updatedTeamItem) {
+      fetch('/api/teams', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedTeamItem),
+      }).catch((e) => console.error('Lỗi update team lên server:', e));
+    }
 
     setProfiles((prev) =>
       prev.map((p) => {
@@ -186,35 +220,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const targetTeam = teams.find((t) => t.id === teamId);
     if (!targetTeam || !currentUser) return false;
 
-    // Rời team cũ nếu đang thuộc team khác
-    if (currentUser.team_id && currentUser.team_id !== teamId) {
-      const oldTeamId = currentUser.team_id;
-      setTeams((prev) =>
-        prev.map((t) => (t.id === oldTeamId ? { ...t, member_count: Math.max(0, (t.member_count || 1) - 1) } : t))
-      );
+    // Ngăn chặn duplicate nếu đã ở trong team này rồi
+    if (currentUser.team_id === teamId) {
+      // Đảm bảo sync lên server profile nếu chưa có
+      fetch('/api/profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(currentUser),
+      }).catch(() => {});
+      return true;
     }
+
+    // Đảm bảo targetTeam đã lưu lên Cloud trước khi gán cho profile
+    fetch('/api/teams', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(targetTeam),
+    }).catch((e) => console.error('Lỗi sync team khi join:', e));
 
     const updatedUser: Profile = { ...currentUser, team_id: targetTeam.id, team: targetTeam };
     setCurrentUser(updatedUser);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('cisco_sport_user', JSON.stringify(updatedUser));
+      try {
+        localStorage.setItem('cisco_sport_user', JSON.stringify(updatedUser));
+      } catch (e) {}
     }
 
     setProfiles((prev) => {
-      const updated = prev.map((p) => (p.id === currentUser.id ? updatedUser : p));
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('cisco_sport_profiles', JSON.stringify(updated));
+      const exists = prev.some((p) => p.id === currentUser.id);
+      if (exists) {
+        return prev.map((p) => (p.id === currentUser.id ? updatedUser : p));
       }
-      return updated;
+      return [updatedUser, ...prev];
     });
 
+    // Cập nhật member_count chuẩn xác dựa trên số thành viên duy nhất thực tế
     setTeams((prev) => {
-      const updated = prev.map((t) => (t.id === targetTeam.id ? { ...t, member_count: (t.member_count || 0) + 1 } : t));
+      const updated = prev.map((t) => {
+        if (t.id === targetTeam.id) {
+          const uniqueMemberIds = new Set(
+            profiles
+              .filter((p) => p.id !== currentUser.id && (p.team_id === t.id || p.team?.id === t.id))
+              .map((p) => p.id)
+          );
+          uniqueMemberIds.add(currentUser.id);
+          return { ...t, member_count: uniqueMemberIds.size };
+        }
+        if (currentUser.team_id && t.id === currentUser.team_id) {
+          const uniqueMemberIds = new Set(
+            profiles
+              .filter((p) => p.id !== currentUser.id && (p.team_id === t.id || p.team?.id === t.id))
+              .map((p) => p.id)
+          );
+          return { ...t, member_count: uniqueMemberIds.size };
+        }
+        return t;
+      });
       if (typeof window !== 'undefined') {
         localStorage.setItem('cisco_sport_teams', JSON.stringify(updated));
       }
       return updated;
     });
+
+    // Lưu Profile lên Cloud Database
+    fetch('/api/profiles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedUser),
+    })
+      .then(() => refreshData())
+      .catch((e) => console.error('Lỗi lưu join team lên server:', e));
 
     return true;
   };
@@ -228,9 +303,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (oldTeamId) {
       setTeams((prev) => {
-        const updated = prev.map((t) =>
-          t.id === oldTeamId ? { ...t, member_count: Math.max(0, (t.member_count || 1) - 1) } : t
-        );
+        const updated = prev.map((t) => {
+          if (t.id === oldTeamId) {
+            const count = profiles.filter((p) => p.id !== userIdToLeave && (p.team_id === t.id || p.team?.id === t.id)).length;
+            return { ...t, member_count: Math.max(0, count) };
+          }
+          return t;
+        });
         if (typeof window !== 'undefined') {
           localStorage.setItem('cisco_sport_teams', JSON.stringify(updated));
         }
@@ -242,18 +321,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setProfiles((prev) => {
       const updated = prev.map((p) => (p.id === userIdToLeave ? { ...p, ...updatedUserProps } : p));
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('cisco_sport_profiles', JSON.stringify(updated));
-      }
       return updated;
     });
 
     if (currentUser?.id === userIdToLeave) {
-      const updatedCurrentUser = { ...currentUser, ...updatedUserProps };
+      const updatedCurrentUser: Profile = { ...currentUser, ...updatedUserProps };
       setCurrentUser(updatedCurrentUser);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('cisco_sport_user', JSON.stringify(updatedCurrentUser));
+        try {
+          localStorage.setItem('cisco_sport_user', JSON.stringify(updatedCurrentUser));
+        } catch (e) {}
       }
+
+      fetch('/api/profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedCurrentUser),
+      })
+        .then(() => refreshData())
+        .catch((e) => console.error('Lỗi lưu leave team:', e));
     }
   };
 
@@ -433,16 +519,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Nạp dữ liệu trực tiếp từ Cloud Database (Supabase) để hiển thị đồng bộ trên mọi thiết bị và ẩn danh
       const fetchServerData = async () => {
         try {
-          const [profRes, actRes] = await Promise.all([
+          const [profRes, actRes, teamRes] = await Promise.all([
             fetch('/api/profiles'),
             fetch('/api/activities'),
+            fetch('/api/teams'),
           ]);
           const profData = await profRes.json();
           const actData = await actRes.json();
+          const teamData = await teamRes.json();
 
           if (profData.success && Array.isArray(profData.profiles)) {
             setProfiles(profData.profiles);
             setCloudStatus('connected');
+
+            // Đồng bộ lại currentUser nếu profile trên server có team hoặc ngược lại
+            if (loadedUser) {
+              const serverProfile = profData.profiles.find(
+                (p: Profile) => p.id === loadedUser!.id || (loadedUser!.strava_id && p.strava_id === loadedUser!.strava_id)
+              );
+
+              if (serverProfile) {
+                if (loadedUser.team_id && !serverProfile.team_id) {
+                  const syncedUser = { ...serverProfile, team_id: loadedUser.team_id, team: loadedUser.team };
+                  setCurrentUser(syncedUser);
+                  fetch('/api/profiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(syncedUser),
+                  }).catch(() => {});
+                } else {
+                  setCurrentUser(serverProfile);
+                  try {
+                    localStorage.setItem('cisco_sport_user', JSON.stringify(serverProfile));
+                  } catch (e) {}
+                }
+              }
+            }
           } else {
             setCloudStatus('error');
           }
@@ -450,6 +562,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (actData.success && Array.isArray(actData.activities)) {
             setActivities(actData.activities);
           }
+
+          let cloudTeams: Team[] = [];
+          if (teamData.success && Array.isArray(teamData.teams)) {
+            cloudTeams = teamData.teams;
+          }
+
+          // Đồng bộ các team từ localStorage lên Cloud nếu Cloud chưa có
+          if (savedTeamsStr) {
+            try {
+              const localTeams: Team[] = JSON.parse(savedTeamsStr);
+              if (Array.isArray(localTeams)) {
+                for (const lt of localTeams) {
+                  if (!['team-1', 'team-2', 'team-3', 'team-4'].includes(lt.id) && !cloudTeams.some((ct) => ct.id === lt.id)) {
+                    fetch('/api/teams', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(lt),
+                    }).catch(() => {});
+                    cloudTeams.push(lt);
+                  }
+                }
+              }
+            } catch (e) {}
+          }
+
+          setTeams(cloudTeams);
         } catch (e) {
           console.error('Lỗi nạp dữ liệu server:', e);
           setCloudStatus('error');
@@ -660,12 +798,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await syncStravaActivities();
 
     try {
-      const [profRes, actRes] = await Promise.all([
+      const [profRes, actRes, teamRes] = await Promise.all([
         fetch('/api/profiles'),
         fetch('/api/activities'),
+        fetch('/api/teams'),
       ]);
       const profData = await profRes.json();
       const actData = await actRes.json();
+      const teamData = await teamRes.json();
 
       if (profData.success && Array.isArray(profData.profiles)) {
         setProfiles(profData.profiles);
@@ -673,6 +813,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       if (actData.success && Array.isArray(actData.activities)) {
         setActivities(actData.activities);
+      }
+      if (teamData.success && Array.isArray(teamData.teams)) {
+        setTeams(teamData.teams);
       }
     } catch (e) {
       console.error('Lỗi nạp lại server data trong refreshData:', e);

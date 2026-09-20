@@ -8,6 +8,7 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 const DATA_DIR = path.join(process.cwd(), 'data');
 const PROFILES_FILE = path.join(DATA_DIR, 'profiles.json');
 const ACTIVITIES_FILE = path.join(DATA_DIR, 'activities.json');
+const TEAMS_FILE = path.join(DATA_DIR, 'teams.json');
 
 const ensureDataDir = () => {
   try {
@@ -17,6 +18,91 @@ const ensureDataDir = () => {
   } catch (e) {
     // Vercel serverless read-only filesystem guard
   }
+};
+
+/**
+ * Đọc tất cả Teams đã lưu trên Cloud (Supabase) hoặc Local File
+ */
+export const getServerTeams = async (): Promise<Team[]> => {
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('teams')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && Array.isArray(data)) {
+        return data as Team[];
+      }
+    } catch (e) {
+      console.error('Supabase get teams error:', e);
+    }
+  }
+
+  ensureDataDir();
+  if (!fs.existsSync(TEAMS_FILE)) {
+    return [];
+  }
+  try {
+    const raw = fs.readFileSync(TEAMS_FILE, 'utf-8');
+    const data = JSON.parse(raw);
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+/**
+ * Thêm hoặc Cập nhật Team trên Cloud (Supabase) hoặc Local File
+ */
+export const upsertServerTeam = async (team: Team): Promise<Team[]> => {
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const upsertData: any = {
+        id: team.id,
+        name: team.name,
+        code: team.code,
+        description: team.description || null,
+        avatar_url: team.avatar_url || null,
+        created_at: team.created_at || new Date().toISOString(),
+      };
+      if (team.leader_id) {
+        upsertData.leader_id = team.leader_id;
+      }
+
+      const { error } = await supabase.from('teams').upsert(upsertData, {
+        onConflict: 'id',
+      });
+
+      if (error) {
+        console.error('Supabase upsert team error:', error);
+        throw new Error(error.message);
+      }
+
+      return await getServerTeams();
+    } catch (e) {
+      console.error('Supabase upsert team error:', e);
+      throw e;
+    }
+  }
+
+  ensureDataDir();
+  const teams = await getServerTeams();
+  const existingIdx = teams.findIndex((t) => t.id === team.id);
+
+  let updatedList: Team[];
+  if (existingIdx >= 0) {
+    teams[existingIdx] = { ...teams[existingIdx], ...team };
+    updatedList = [...teams];
+  } else {
+    updatedList = [team, ...teams];
+  }
+
+  try {
+    fs.writeFileSync(TEAMS_FILE, JSON.stringify(updatedList, null, 2), 'utf-8');
+  } catch (e) {}
+
+  return updatedList;
 };
 
 /**
@@ -79,14 +165,33 @@ export const upsertServerProfile = async (profile: Profile): Promise<Profile[]> 
             .select('id')
             .eq('id', profile.team_id)
             .maybeSingle();
+
           if (teamExists) {
             upsertData.team_id = profile.team_id;
+          } else if (profile.team && (profile.team.name || profile.team.code)) {
+            // Tự động tạo/đồng bộ team lên Supabase nếu team đã có ở client
+            await supabase.from('teams').upsert(
+              {
+                id: profile.team.id || profile.team_id,
+                name: profile.team.name || 'Cisco Team',
+                code: profile.team.code || `CSC-${Math.floor(1000 + Math.random() * 9000)}`,
+                description: profile.team.description || null,
+                avatar_url: profile.team.avatar_url || null,
+                leader_id: profile.team.leader_id || profile.id,
+                created_at: profile.team.created_at || new Date().toISOString(),
+              },
+              { onConflict: 'id' }
+            );
+            upsertData.team_id = profile.team.id || profile.team_id;
           } else {
             upsertData.team_id = null;
           }
         } catch (err) {
+          console.error('Lỗi kiểm tra team trong profile:', err);
           upsertData.team_id = null;
         }
+      } else {
+        upsertData.team_id = null;
       }
 
       const { error } = await supabase.from('profiles').upsert(upsertData, {

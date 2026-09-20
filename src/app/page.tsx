@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
-import { TimeFilter, SportType, IndividualLeaderboardEntry, TeamLeaderboardEntry } from '@/types';
+import { TimeFilter, SportType, IndividualLeaderboardEntry, TeamLeaderboardEntry, Profile, Activity } from '@/types';
 import { Trophy, Flame, Crown, Medal, Zap, TrendingUp, Users, Sparkles, HeartPulse } from 'lucide-react';
 import Link from 'next/link';
 import confetti from 'canvas-confetti';
@@ -242,15 +242,32 @@ export default function LeaderboardPage() {
 
   const teamLeaderboard = useMemo<TeamLeaderboardEntry[]>(() => {
     const list: TeamLeaderboardEntry[] = teams.map((team) => {
-      const teamProfiles = profiles.filter((p) => p.team_id === team.id);
+      const rawProfiles = profiles.filter((p) => p.team_id === team.id || p.team?.id === team.id);
+      const uniqueProfileMap = new Map<string, Profile>();
+      rawProfiles.forEach((p) => {
+        const key = p.strava_id ? `strava_${p.strava_id}` : p.id;
+        if (!uniqueProfileMap.has(key)) uniqueProfileMap.set(key, p);
+      });
+      const teamProfiles = Array.from(uniqueProfileMap.values());
       const teamProfileIds = new Set(teamProfiles.map((p) => p.id));
+      const teamStravaIds = new Set(teamProfiles.map((p) => p.strava_id).filter(Boolean));
 
-      const teamActivities = activities.filter(
+      const rawActivities = activities.filter(
         (act) =>
-          teamProfileIds.has(act.profile_id) &&
+          (teamProfileIds.has(act.profile_id) ||
+            (act.profile && teamProfileIds.has(act.profile.id)) ||
+            (act.profile?.strava_id && teamStravaIds.has(act.profile.strava_id))) &&
+          !['act-1', 'act-2', 'act-3', 'act-4', 'act-5'].includes(act.id) &&
           (sportFilter === 'All' || act.type.toLowerCase() === sportFilter.toLowerCase()) &&
           isActivityInTimeFilter(act.start_date, timeFilter)
       );
+
+      const uniqueActMap = new Map<string, Activity>();
+      rawActivities.forEach((a) => {
+        const k = String(a.strava_activity_id || a.id);
+        if (!uniqueActMap.has(k)) uniqueActMap.set(k, a);
+      });
+      const teamActivities = Array.from(uniqueActMap.values());
 
       const totalDist = teamActivities.reduce((acc, a) => acc + a.distance, 0);
       const totalPts = teamActivities.reduce((acc, a) => acc + a.calculated_points, 0);

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Team, Profile } from '@/types';
+import { Team, Profile, Activity } from '@/types';
 import { Users, PlusCircle, UserPlus, CheckCircle2, Copy, Check, Sparkles, Edit3, Eye, LogOut, ArrowRight, ShieldCheck, Flame, Trophy, Calendar, Upload, Image as ImageIcon, UserMinus, UserCheck, Crown } from 'lucide-react';
 
 const PRESET_TEAM_AVATARS = [
@@ -152,24 +152,51 @@ export default function TeamsPage() {
 
   // Tính Bảng xếp hạng VĐV nội bộ trong Team (Xếp hạng từ cao xuống thấp)
   const getTeamMemberLeaderboard = (team: Team) => {
-    const members = profiles.filter((p) => p.team_id === team.id || p.team?.id === team.id);
+    const rawMembers = profiles.filter((p) => p.team_id === team.id || p.team?.id === team.id);
+    if ((currentUser?.team_id === team.id || currentUser?.team?.id === team.id) && !rawMembers.some((p) => p.id === currentUser.id)) {
+      rawMembers.push(currentUser);
+    }
+
+    // Khử trùng lặp danh sách VĐV theo strava_id hoặc id
+    const uniqueMap = new Map<string, Profile>();
+    rawMembers.forEach((m) => {
+      const key = m.strava_id ? `strava_${m.strava_id}` : m.id;
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, m);
+      }
+    });
+    const members = Array.from(uniqueMap.values());
 
     const leaderboard = members.map((profile) => {
       const userActs = activities.filter(
-        (a) => (a.profile_id === profile.id || a.profile?.id === profile.id) && !a.id.startsWith('act-')
+        (a) =>
+          (a.profile_id === profile.id ||
+            a.profile?.id === profile.id ||
+            (profile.strava_id && a.profile?.strava_id === profile.strava_id)) &&
+          !['act-1', 'act-2', 'act-3', 'act-4', 'act-5'].includes(a.id)
       );
 
-      const totalDistMeters = userActs.reduce((sum, a) => sum + a.distance, 0);
+      // Khử trùng lặp bài tập theo strava_activity_id hoặc id
+      const actMap = new Map<string, Activity>();
+      userActs.forEach((act) => {
+        const key = String(act.strava_activity_id || act.id);
+        if (!actMap.has(key)) {
+          actMap.set(key, act);
+        }
+      });
+      const uniqueUserActs = Array.from(actMap.values());
+
+      const totalDistMeters = uniqueUserActs.reduce((sum, a) => sum + (a.distance || 0), 0);
       const totalKm = totalDistMeters / 1000;
-      const totalPts = userActs.reduce((sum, a) => sum + a.calculated_points, 0);
-      const totalElev = userActs.reduce((sum, a) => sum + (a.total_elevation_gain || 0), 0);
+      const totalPts = uniqueUserActs.reduce((sum, a) => sum + (a.calculated_points || 0), 0);
+      const totalElev = uniqueUserActs.reduce((sum, a) => sum + (a.total_elevation_gain || 0), 0);
 
       return {
         profile,
         totalKm,
         totalPts,
         totalElev: Math.round(totalElev),
-        workoutCount: userActs.length,
+        workoutCount: uniqueUserActs.length,
       };
     });
 
@@ -181,10 +208,32 @@ export default function TeamsPage() {
 
   // Nhật ký bài tập gần nhất của các thành viên trong Team
   const getTeamActivities = (team: Team) => {
-    const memberIds = new Set(
-      profiles.filter((p) => p.team_id === team.id || p.team?.id === team.id).map((p) => p.id)
+    const rawMembers = profiles.filter((p) => p.team_id === team.id || p.team?.id === team.id);
+    if ((currentUser?.team_id === team.id || currentUser?.team?.id === team.id) && !rawMembers.some((p) => p.id === currentUser.id)) {
+      rawMembers.push(currentUser);
+    }
+    const memberIds = new Set(rawMembers.map((p) => p.id));
+    const memberStravaIds = new Set(rawMembers.map((p) => p.strava_id).filter(Boolean));
+
+    const acts = activities.filter(
+      (a) =>
+        (memberIds.has(a.profile_id) ||
+          (a.profile && memberIds.has(a.profile.id)) ||
+          (a.profile?.strava_id && memberStravaIds.has(a.profile.strava_id))) &&
+        !['act-1', 'act-2', 'act-3', 'act-4', 'act-5'].includes(a.id)
     );
-    return activities.filter((a) => memberIds.has(a.profile_id) || (a.profile && memberIds.has(a.profile.id)));
+
+    const actMap = new Map<string, Activity>();
+    acts.forEach((act) => {
+      const key = String(act.strava_activity_id || act.id);
+      if (!actMap.has(key)) {
+        actMap.set(key, act);
+      }
+    });
+
+    return Array.from(actMap.values()).sort(
+      (a, b) => new Date(b.start_date || b.created_at || 0).getTime() - new Date(a.start_date || a.created_at || 0).getTime()
+    );
   };
 
   return (
@@ -295,7 +344,15 @@ export default function TeamsPage() {
 
                 <div className="border-l border-slate-800 pl-4">
                   <p className="text-[10px] text-slate-400 uppercase font-bold">Thành Viên</p>
-                  <p className="font-extrabold text-white text-sm">{currentUser.team.member_count} VĐV</p>
+                  <p className="font-extrabold text-white text-sm">
+                    {(() => {
+                      const tId = currentUser.team.id;
+                      const raw = profiles.filter((p) => p.team_id === tId || p.team?.id === tId);
+                      if (!raw.some((p) => p.id === currentUser.id)) raw.push(currentUser);
+                      const uniqueIds = new Set(raw.map((p) => (p.strava_id ? `strava_${p.strava_id}` : p.id)));
+                      return Math.max(uniqueIds.size, 1);
+                    })()} VĐV
+                  </p>
                 </div>
               </div>
 
@@ -347,8 +404,39 @@ export default function TeamsPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {teams.map((team) => {
-            const isMyTeam = currentUser?.team_id === team.id;
-            const teamMembersCount = profiles.filter((p) => p.team_id === team.id || p.team?.id === team.id).length;
+            const isMyTeam = currentUser?.team_id === team.id || currentUser?.team?.id === team.id;
+            const rawMembers = profiles.filter((p) => p.team_id === team.id || p.team?.id === team.id);
+            if (isMyTeam && currentUser && !rawMembers.some((p) => p.id === currentUser.id)) {
+              rawMembers.push(currentUser);
+            }
+            const uniqueMemberMap = new Map<string, Profile>();
+            rawMembers.forEach((m) => {
+              const k = m.strava_id ? `strava_${m.strava_id}` : m.id;
+              if (!uniqueMemberMap.has(k)) uniqueMemberMap.set(k, m);
+            });
+            const teamMemberList = Array.from(uniqueMemberMap.values());
+            const teamMembersCount = teamMemberList.length;
+
+            const memberProfileIds = new Set(teamMemberList.map((p) => p.id));
+            const memberStravaIds = new Set(teamMemberList.map((p) => p.strava_id).filter(Boolean));
+
+            const teamActs = activities.filter(
+              (a) =>
+                (memberProfileIds.has(a.profile_id) ||
+                  (a.profile && memberProfileIds.has(a.profile.id)) ||
+                  (a.profile?.strava_id && memberStravaIds.has(a.profile.strava_id))) &&
+                !['act-1', 'act-2', 'act-3', 'act-4', 'act-5'].includes(a.id)
+            );
+
+            const uniqueActMap = new Map<string, Activity>();
+            teamActs.forEach((act) => {
+              const k = String(act.strava_activity_id || act.id);
+              if (!uniqueActMap.has(k)) uniqueActMap.set(k, act);
+            });
+            const uniqueTeamActs = Array.from(uniqueActMap.values());
+
+            const calculatedTotalDistMeters = uniqueTeamActs.reduce((sum, a) => sum + (a.distance || 0), 0);
+            const calculatedTotalPts = uniqueTeamActs.reduce((sum, a) => sum + (a.calculated_points || 0), 0);
 
             return (
               <div
@@ -383,12 +471,12 @@ export default function TeamsPage() {
                 <div className="pt-3 border-t border-slate-800/80 grid grid-cols-2 gap-2 text-center bg-slate-950/60 p-3 rounded-2xl border border-slate-800">
                   <div>
                     <p className="text-[10px] text-slate-400 font-medium">Tổng điểm Team</p>
-                    <p className="font-black text-lg text-[#CCFF00] mt-0.5">{team.total_points || 0} <span className="text-[10px] font-normal text-slate-400">pts</span></p>
+                    <p className="font-black text-lg text-[#CCFF00] mt-0.5">{Math.round(calculatedTotalPts * 10) / 10} <span className="text-[10px] font-normal text-slate-400">pts</span></p>
                   </div>
 
                   <div>
                     <p className="text-[10px] text-slate-400 font-medium">Tổng cự ly</p>
-                    <p className="font-black text-lg text-white mt-0.5">{((team.total_distance || 0) / 1000).toFixed(1)} <span className="text-[10px] font-normal text-slate-400">km</span></p>
+                    <p className="font-black text-lg text-white mt-0.5">{(calculatedTotalDistMeters / 1000).toFixed(1)} <span className="text-[10px] font-normal text-slate-400">km</span></p>
                   </div>
                 </div>
 
@@ -704,6 +792,34 @@ export default function TeamsPage() {
 
             {/* Scrollable Modal Content */}
             <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              {(() => {
+                const teamLeaderboard = getTeamMemberLeaderboard(selectedTeam);
+                const teamActs = getTeamActivities(selectedTeam);
+                const totalTeamKm = teamLeaderboard.reduce((s, e) => s + e.totalKm, 0);
+                const totalTeamPts = teamLeaderboard.reduce((s, e) => s + e.totalPts, 0);
+
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
+                    <div className="text-center p-2 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Thành Viên</p>
+                      <p className="text-lg font-black text-white mt-0.5">{teamLeaderboard.length} <span className="text-xs font-normal text-slate-400">VĐV</span></p>
+                    </div>
+                    <div className="text-center p-2 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Tổng Cự Ly</p>
+                      <p className="text-lg font-black text-[#00BCEB] mt-0.5">{totalTeamKm.toFixed(1)} <span className="text-xs font-normal text-slate-400">km</span></p>
+                    </div>
+                    <div className="text-center p-2 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Tổng Điểm Team</p>
+                      <p className="text-lg font-black text-[#CCFF00] mt-0.5">{Math.round(totalTeamPts * 10) / 10} <span className="text-xs font-normal text-slate-400">pts</span></p>
+                    </div>
+                    <div className="text-center p-2 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Tổng Bài Tập</p>
+                      <p className="text-lg font-black text-orange-400 mt-0.5">{teamActs.length} <span className="text-xs font-normal text-slate-400">bài</span></p>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Leaderboard Section */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
