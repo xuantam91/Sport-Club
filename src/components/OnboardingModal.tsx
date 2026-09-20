@@ -49,8 +49,12 @@ export const OnboardingModal: React.FC = () => {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 8 * 1024 * 1024) {
+        alert('Vui lòng chọn ảnh dung lượng dưới 8MB.');
+        return;
+      }
       try {
-        const compressedBase64 = await compressImage(file, 300, 300, 0.85);
+        const compressedBase64 = await compressImage(file, 200, 200, 0.75);
         setAvatarUrl(compressedBase64);
       } catch (err) {
         console.error('Lỗi nén ảnh:', err);

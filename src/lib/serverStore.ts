@@ -73,7 +73,20 @@ export const upsertServerProfile = async (profile: Profile): Promise<Profile[]> 
         upsertData.department = profile.department;
       }
       if (profile.team_id) {
-        upsertData.team_id = profile.team_id;
+        try {
+          const { data: teamExists } = await supabase
+            .from('teams')
+            .select('id')
+            .eq('id', profile.team_id)
+            .maybeSingle();
+          if (teamExists) {
+            upsertData.team_id = profile.team_id;
+          } else {
+            upsertData.team_id = null;
+          }
+        } catch (err) {
+          upsertData.team_id = null;
+        }
       }
 
       const { error } = await supabase.from('profiles').upsert(upsertData, {

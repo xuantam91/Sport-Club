@@ -570,7 +570,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setCurrentUser(updatedProfile);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('cisco_sport_user', JSON.stringify(updatedProfile));
+      try {
+        localStorage.setItem('cisco_sport_user', JSON.stringify(updatedProfile));
+      } catch (e) {
+        console.warn('LocalStorage quota exceeded, storing user without large avatar:', e);
+        try {
+          const safeUser = {
+            ...updatedProfile,
+            avatar_url: updatedProfile.avatar_url?.startsWith('data:') ? undefined : updatedProfile.avatar_url,
+          };
+          localStorage.setItem('cisco_sport_user', JSON.stringify(safeUser));
+        } catch (err) {}
+      }
     }
 
     setProfiles((prev) => prev.map((p) => (p.id === currentUser.id ? updatedProfile : p)));

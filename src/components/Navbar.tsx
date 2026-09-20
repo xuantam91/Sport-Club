@@ -119,7 +119,7 @@ export const Navbar: React.FC = () => {
             {currentUser && (
               <Link href="/profile" className="flex items-center group btn-interactive">
                 <img
-                  src={currentUser.avatar_url}
+                  src={currentUser.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
                   alt={currentUser.full_name}
                   className="w-9 h-9 rounded-full object-cover border-2 border-slate-700 group-hover:border-[#00BCEB] group-hover:shadow-lg group-hover:shadow-[#00BCEB]/20 transition-all duration-300"
                 />

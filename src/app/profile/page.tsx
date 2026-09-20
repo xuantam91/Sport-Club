@@ -291,7 +291,7 @@ export default function ProfilePage() {
       (a.profile_id === currentUser.id ||
         a.profile?.id === currentUser.id ||
         (currentUser.strava_id && a.profile?.strava_id === currentUser.strava_id)) &&
-      !a.id.startsWith('act-')
+      !['act-1', 'act-2', 'act-3', 'act-4', 'act-5'].includes(a.id)
   );
 
   // Lọc bài tập theo mốc thời gian đã chọn
@@ -338,8 +338,8 @@ export default function ProfilePage() {
     return true;
   });
 
-  const totalDistMeters = userActivities.reduce((acc, a) => acc + a.distance, 0);
-  const totalPoints = userActivities.reduce((acc, a) => acc + a.calculated_points, 0);
+  const totalDistMeters = userActivities.reduce((acc, a) => acc + (a.distance || 0), 0);
+  const totalPoints = userActivities.reduce((acc, a) => acc + (a.calculated_points || 0), 0);
   const totalElevation = userActivities.reduce((acc, a) => acc + (a.total_elevation_gain || 0), 0);
   const totalMovingTimeSec = userActivities.reduce((acc, a) => acc + (a.moving_time || a.elapsed_time || 0), 0);
 
@@ -361,8 +361,8 @@ export default function ProfilePage() {
 
   const groupedStats = sportCategories.map((cat) => {
     const list = userActivities.filter((a) => a.type === cat.type);
-    const distMeters = list.reduce((sum, a) => sum + a.distance, 0);
-    const points = list.reduce((sum, a) => sum + a.calculated_points, 0);
+    const distMeters = list.reduce((sum, a) => sum + (a.distance || 0), 0);
+    const points = list.reduce((sum, a) => sum + (a.calculated_points || 0), 0);
     const timeSec = list.reduce((sum, a) => sum + (a.moving_time || a.elapsed_time || 0), 0);
     const elevGain = list.reduce((sum, a) => sum + (a.total_elevation_gain || 0), 0);
     const count = list.length;
@@ -372,10 +372,10 @@ export default function ProfilePage() {
       ...cat,
       list,
       count,
-      km: (distMeters / 1000).toFixed(1),
-      points: points.toFixed(1),
+      km: (Number(distMeters || 0) / 1000).toFixed(1),
+      points: Number(points || 0).toFixed(1),
       timeSec,
-      elevGain: Math.round(elevGain),
+      elevGain: Math.round(elevGain || 0),
       timePercent,
     };
   });
@@ -390,7 +390,7 @@ export default function ProfilePage() {
 
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 relative z-10 text-center sm:text-left">
           <img
-            src={currentUser.avatar_url}
+            src={currentUser.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
             alt={currentUser.full_name}
             className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl object-cover border-4 border-[#00BCEB] shadow-2xl"
           />
