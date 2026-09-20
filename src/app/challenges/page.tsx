@@ -14,7 +14,7 @@ const PRESET_BANNERS = [
 ];
 
 export default function ChallengesPage() {
-  const { challenges, createChallenge, updateChallenge, joinChallenge, leaveChallenge, currentUser, profiles, activities, t } = useApp();
+  const { challenges, createChallenge, updateChallenge, joinChallenge, leaveChallenge, currentUser, profiles, activities, rules, t } = useApp();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(null);
@@ -24,7 +24,7 @@ export default function ChallengesPage() {
   // State cho Form Tạo mới / Chỉnh sửa
   const [chTitle, setChTitle] = useState('');
   const [chDesc, setChDesc] = useState('');
-  const [chType, setChType] = useState<SportType>('Run');
+  const [chSportTypes, setChSportTypes] = useState<string[]>(['Run']);
   const [chTargetKm, setChTargetKm] = useState('100');
   const [chStartDate, setChStartDate] = useState('2026-10-01');
   const [chEndDate, setChEndDate] = useState('2026-10-31');
@@ -32,6 +32,73 @@ export default function ChallengesPage() {
   const [chStatus, setChStatus] = useState<'active' | 'upcoming' | 'completed'>('active');
 
   const isAdminOrOrganizer = currentUser?.role === 'admin' || currentUser?.role === 'organizer';
+
+  // Toggle chọn 1 hoặc nhiều môn thể thao cho giải đấu
+  const toggleSport = (code: string) => {
+    if (code.toLowerCase() === 'all') {
+      if (chSportTypes.some((s) => s.toLowerCase() === 'all')) {
+        setChSportTypes(['Run']);
+      } else {
+        setChSportTypes(['All']);
+      }
+      return;
+    }
+
+    const withoutAll = chSportTypes.filter((s) => s.toLowerCase() !== 'all');
+    const exists = withoutAll.some((s) => s.toLowerCase() === code.toLowerCase());
+    if (exists) {
+      const next = withoutAll.filter((s) => s.toLowerCase() !== code.toLowerCase());
+      setChSportTypes(next.length > 0 ? next : ['Run']);
+    } else {
+      setChSportTypes([...withoutAll, code]);
+    }
+  };
+
+  // Kiểm tra một bài tập có khớp với các môn thể thao đã chọn trong giải hay không
+  const isActivityMatchingChallenge = (a: Activity, ch: Challenge) => {
+    const selected = (ch.sport_types && ch.sport_types.length > 0)
+      ? ch.sport_types
+      : [ch.type || 'Run'];
+
+    if (selected.some((s) => s.toLowerCase() === 'all')) return true;
+
+    const actTypeLower = (a.type || '').toLowerCase();
+    return selected.some((s) => s.toLowerCase() === actTypeLower);
+  };
+
+  // Render danh sách huy hiệu thể thao của giải đấu
+  const renderSportBadges = (ch: Challenge) => {
+    const selected = (ch.sport_types && ch.sport_types.length > 0)
+      ? ch.sport_types
+      : [ch.type || 'Run'];
+
+    if (selected.some((s) => s.toLowerCase() === 'all')) {
+      return (
+        <span className="px-3.5 py-1.5 rounded-full bg-slate-950/95 text-xs font-black text-[#00F0FF] border border-[#00BCEB]/50 shadow-xl backdrop-blur-md">
+          🌐 Tất Cả Bộ Môn
+        </span>
+      );
+    }
+
+    return (
+      <div className="flex flex-wrap gap-1.5 max-w-full">
+        {selected.map((st) => {
+          const rule = rules.find((r) => r.activity_type.toLowerCase() === st.toLowerCase());
+          const icon = rule?.icon || (st.toLowerCase() === 'run' ? '🏃' : st.toLowerCase() === 'ride' ? '🚴' : st.toLowerCase() === 'swim' ? '🏊' : '🏅');
+          const name = rule?.display_name || st;
+          return (
+            <span
+              key={st}
+              className="px-2.5 py-1 rounded-full bg-slate-950/95 text-[11px] font-black text-[#CCFF00] border border-[#CCFF00]/50 shadow-xl backdrop-blur-md flex items-center space-x-1"
+            >
+              <span>{icon}</span>
+              <span>{name}</span>
+            </span>
+          );
+        })}
+      </div>
+    );
+  };
 
   // Tự động mở Modal Chi Tiết Giải Đấu nếu URL có dạng ?id=ch-xxx
   useEffect(() => {
@@ -71,7 +138,7 @@ export default function ChallengesPage() {
   const openCreateModal = () => {
     setChTitle('');
     setChDesc('');
-    setChType('Run');
+    setChSportTypes(['Run']);
     setChTargetKm('100');
     setChStartDate('2026-10-01');
     setChEndDate('2026-10-31');
@@ -84,7 +151,10 @@ export default function ChallengesPage() {
     setEditingChallenge(ch);
     setChTitle(ch.title);
     setChDesc(ch.description);
-    setChType(ch.type);
+    const initialSports = (ch.sport_types && ch.sport_types.length > 0)
+      ? ch.sport_types
+      : [ch.type || 'Run'];
+    setChSportTypes(initialSports);
     setChTargetKm(String(ch.target_km));
     setChStartDate(ch.start_date);
     setChEndDate(ch.end_date);
@@ -117,7 +187,8 @@ export default function ChallengesPage() {
     createChallenge({
       title: chTitle,
       description: chDesc,
-      type: chType,
+      type: chSportTypes[0] || 'Run',
+      sport_types: chSportTypes,
       target_km: parseFloat(chTargetKm) || 100,
       start_date: chStartDate,
       end_date: chEndDate,
@@ -134,7 +205,8 @@ export default function ChallengesPage() {
     updateChallenge(editingChallenge.id, {
       title: chTitle,
       description: chDesc,
-      type: chType,
+      type: chSportTypes[0] || 'Run',
+      sport_types: chSportTypes,
       target_km: parseFloat(chTargetKm) || 100,
       start_date: chStartDate,
       end_date: chEndDate,
@@ -148,7 +220,8 @@ export default function ChallengesPage() {
         ...selectedChallenge,
         title: chTitle,
         description: chDesc,
-        type: chType,
+        type: chSportTypes[0] || 'Run',
+        sport_types: chSportTypes,
         target_km: parseFloat(chTargetKm) || 100,
         start_date: chStartDate,
         end_date: chEndDate,
@@ -173,7 +246,7 @@ export default function ChallengesPage() {
         (userProfile?.strava_id && a.profile?.strava_id === userProfile.strava_id);
       if (!matchesUser) return false;
 
-      if (ch.type !== 'All' && a.type.toLowerCase() !== ch.type.toLowerCase()) return false;
+      if (!isActivityMatchingChallenge(a, ch)) return false;
 
       if (a.start_date) {
         const actDate = a.start_date.split('T')[0];
@@ -220,7 +293,7 @@ export default function ChallengesPage() {
           (profile.strava_id && a.profile?.strava_id === profile.strava_id);
         if (!matchesUser) return false;
 
-        if (ch.type !== 'All' && a.type.toLowerCase() !== ch.type.toLowerCase()) return false;
+        if (!isActivityMatchingChallenge(a, ch)) return false;
 
         if (a.start_date) {
           const actDate = a.start_date.split('T')[0];
@@ -303,10 +376,8 @@ export default function ChallengesPage() {
               >
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent"></div>
 
-                <div className="relative z-10 flex items-center justify-between">
-                  <span className="px-3.5 py-1.5 rounded-full bg-slate-950/95 text-xs font-black text-[#CCFF00] border border-[#CCFF00]/50 shadow-xl backdrop-blur-md">
-                    {ch.type === 'Run' ? '🏃 Chạy bộ' : ch.type === 'Ride' ? '🚴 Đạp xe' : ch.type === 'Walk' ? '🚶 Đi bộ' : ch.type === 'Swim' ? '🏊 Bơi lội' : '🥾 Leo núi'}
-                  </span>
+                <div className="relative z-10 flex items-center justify-between gap-2">
+                  {renderSportBadges(ch)}
 
                   <span className={`px-3.5 py-1.5 rounded-full text-xs font-black uppercase shadow-xl backdrop-blur-md border ${
                     ch.status === 'active' ? 'bg-slate-950/95 text-emerald-400 border-2 border-emerald-500 shadow-emerald-500/30' :
@@ -455,34 +526,73 @@ export default function ChallengesPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Bộ Môn Thể Thao</label>
-                  <select
-                    value={chType}
-                    onChange={(e) => setChType(e.target.value as SportType)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-[#00BCEB]"
-                  >
-                    <option value="Run">🏃 Chạy Bộ (Run)</option>
-                    <option value="Ride">🚴 Đạp Xe (Ride)</option>
-                    <option value="Walk">🚶 Đi Bộ (Walk)</option>
-                    <option value="Swim">🏊 Bơi Lội (Swim)</option>
-                    <option value="Hike">🥾 Leo Núi (Hike)</option>
-                    <option value="All">🌐 Tất Cả Bộ Môn</option>
-                  </select>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-300 uppercase">
+                    Chọn Bộ Môn Thể Thao Áp Dụng (Chọn 1 hoặc nhiều môn)
+                  </label>
+                  <span className="text-[11px] text-[#00BCEB] font-bold">
+                    {chSportTypes.includes('All')
+                      ? 'Áp dụng tất cả bộ môn'
+                      : `Đã chọn: ${chSportTypes.length} môn`}
+                  </span>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Mục Tiêu Cự Ly (km)</label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    value={chTargetKm}
-                    onChange={(e) => setChTargetKm(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-[#00BCEB]"
-                  />
+                <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    {/* Option All */}
+                    <button
+                      type="button"
+                      onClick={() => toggleSport('All')}
+                      className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all ${
+                        chSportTypes.includes('All')
+                          ? 'bg-gradient-to-r from-[#00BCEB] to-blue-600 text-slate-950 shadow-md shadow-[#00BCEB]/30'
+                          : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                      }`}
+                    >
+                      <span>🌐</span>
+                      <span>Tất Cả Bộ Môn (All)</span>
+                      {chSportTypes.includes('All') && <Check className="w-3.5 h-3.5 ml-1" />}
+                    </button>
+
+                    {/* Danh sách các môn thể thao cấu hình từ Admin (rules) */}
+                    {rules.map((rule) => {
+                      const isSelected = !chSportTypes.includes('All') && chSportTypes.some((s) => s.toLowerCase() === rule.activity_type.toLowerCase());
+                      return (
+                        <button
+                          key={rule.activity_type}
+                          type="button"
+                          onClick={() => toggleSport(rule.activity_type)}
+                          className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all ${
+                            isSelected
+                              ? 'bg-[#CCFF00] text-slate-950 shadow-md shadow-[#CCFF00]/30 ring-2 ring-[#CCFF00]/50'
+                              : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+                          }`}
+                        >
+                          <span>{rule.icon}</span>
+                          <span>{rule.display_name}</span>
+                          {isSelected && <Check className="w-3.5 h-3.5 ml-1" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <p className="text-[10px] text-slate-400">
+                    💡 <strong className="text-slate-200">Ghi chú:</strong> Vận động viên tham gia giải đấu sẽ được tính tích lũy km và điểm số khi hoàn thành bất kỳ môn thể thao nào trong danh sách được chọn ở trên.
+                  </p>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Mục Tiêu Cự Ly (km)</label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  value={chTargetKm}
+                  onChange={(e) => setChTargetKm(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-[#00BCEB]"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -641,9 +751,7 @@ export default function ChallengesPage() {
 
               <div className="relative z-10 flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <span className="px-3.5 py-1.5 rounded-full bg-slate-950/95 text-xs font-black text-[#CCFF00] border border-[#CCFF00]/50 shadow-xl backdrop-blur-md">
-                    {selectedChallenge.type === 'Run' ? '🏃 Chạy bộ' : selectedChallenge.type === 'Ride' ? '🚴 Đạp xe' : selectedChallenge.type === 'Walk' ? '🚶 Đi bộ' : selectedChallenge.type === 'Swim' ? '🏊 Bơi lội' : '🥾 Leo núi'}
-                  </span>
+                  {renderSportBadges(selectedChallenge)}
                   <span className={`px-3.5 py-1.5 rounded-full text-xs font-black uppercase shadow-xl backdrop-blur-md border ${
                     selectedChallenge.status === 'active' ? 'bg-slate-950/95 text-emerald-400 border-2 border-emerald-500 shadow-emerald-500/30' :
                     selectedChallenge.status === 'upcoming' ? 'bg-slate-950/95 text-[#00F0FF] border-2 border-[#00BCEB] shadow-cyan-500/30' :

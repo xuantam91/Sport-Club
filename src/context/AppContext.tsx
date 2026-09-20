@@ -84,14 +84,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateRules = (newRules: SportRule[]) => {
     setRules(newRules);
-    localStorage.setItem('cisco_sport_rules', JSON.stringify(newRules));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cisco_sport_rules', JSON.stringify(newRules));
+    }
+
+    // Gửi quy tắc lên server / Cloud DB
+    fetch('/api/rules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rules: newRules }),
+    }).catch((e) => console.error('Lỗi lưu rules lên server:', e));
 
     setActivities((prev) => {
       const updated = prev.map((act) => ({
         ...act,
         calculated_points: calculatePoints(act.type, act.distance, act.total_elevation_gain, newRules),
       }));
-      localStorage.setItem('cisco_sport_activities', JSON.stringify(updated));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cisco_sport_activities', JSON.stringify(updated));
+      }
       return updated;
     });
   };
@@ -571,16 +582,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Nạp dữ liệu trực tiếp từ Cloud Database (Supabase) để hiển thị đồng bộ trên mọi thiết bị và ẩn danh
       const fetchServerData = async () => {
         try {
-          const [profRes, actRes, teamRes, chRes] = await Promise.all([
+          const [profRes, actRes, teamRes, chRes, rulesRes] = await Promise.all([
             fetch('/api/profiles'),
             fetch('/api/activities'),
             fetch('/api/teams'),
             fetch('/api/challenges'),
+            fetch('/api/rules'),
           ]);
           const profData = await profRes.json();
           const actData = await actRes.json();
           const teamData = await teamRes.json();
           const chData = await chRes.json();
+          const rulesData = await rulesRes.json();
+
+          if (rulesData.success && Array.isArray(rulesData.rules) && rulesData.rules.length > 0) {
+            setRules(rulesData.rules);
+          }
 
           if (profData.success && Array.isArray(profData.profiles)) {
             setProfiles(profData.profiles);
@@ -878,17 +895,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await syncStravaActivities();
 
     try {
-      const [profRes, actRes, teamRes, chRes] = await Promise.all([
+      const [profRes, actRes, teamRes, chRes, rulesRes] = await Promise.all([
         fetch('/api/profiles'),
         fetch('/api/activities'),
         fetch('/api/teams'),
         fetch('/api/challenges'),
+        fetch('/api/rules'),
       ]);
       const profData = await profRes.json();
       const actData = await actRes.json();
       const teamData = await teamRes.json();
       const chData = await chRes.json();
+      const rulesData = await rulesRes.json();
 
+      if (rulesData.success && Array.isArray(rulesData.rules) && rulesData.rules.length > 0) {
+        setRules(rulesData.rules);
+      }
       if (profData.success && Array.isArray(profData.profiles)) {
         setProfiles(profData.profiles);
         setCloudStatus('connected');

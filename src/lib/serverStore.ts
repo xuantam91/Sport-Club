@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { Profile, Activity, Team, Challenge } from '@/types';
+import { Profile, Activity, Team, Challenge, SportRule } from '@/types';
 import { fetchStravaActivities, calculatePoints, mapSportType } from '@/lib/strava';
 import { DEFAULT_SPORT_RULES } from '@/lib/demoData';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
@@ -10,6 +10,7 @@ const PROFILES_FILE = path.join(DATA_DIR, 'profiles.json');
 const ACTIVITIES_FILE = path.join(DATA_DIR, 'activities.json');
 const TEAMS_FILE = path.join(DATA_DIR, 'teams.json');
 const CHALLENGES_FILE = path.join(DATA_DIR, 'challenges.json');
+const RULES_FILE = path.join(DATA_DIR, 'rules.json');
 
 const ensureDataDir = () => {
   try {
@@ -190,6 +191,84 @@ export const upsertServerChallenge = async (ch: Challenge): Promise<Challenge[]>
   } catch (e) {}
 
   return updatedList;
+};
+
+/**
+ * Đọc tất cả Quy tắc điểm số các môn thể thao từ Cloud (Supabase) hoặc Local File
+ */
+export const getServerSportRules = async (): Promise<SportRule[]> => {
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('sport_rules')
+        .select('*')
+        .order('activity_type', { ascending: true });
+
+      if (!error && Array.isArray(data) && data.length > 0) {
+        return data as SportRule[];
+      }
+    } catch (e) {
+      console.error('Supabase get sport_rules error:', e);
+    }
+  }
+
+  ensureDataDir();
+  if (!fs.existsSync(RULES_FILE)) {
+    return DEFAULT_SPORT_RULES;
+  }
+  try {
+    const raw = fs.readFileSync(RULES_FILE, 'utf-8');
+    const data = JSON.parse(raw);
+    return Array.isArray(data) && data.length > 0 ? data : DEFAULT_SPORT_RULES;
+  } catch (e) {
+    return DEFAULT_SPORT_RULES;
+  }
+};
+
+/**
+ * Lưu toàn bộ Quy tắc điểm số (Thêm môn mới, sửa hệ số, xóa môn) lên Cloud (Supabase) hoặc Local File
+ */
+export const saveServerSportRules = async (rules: SportRule[]): Promise<SportRule[]> => {
+  if (isSupabaseConfigured() && supabase && Array.isArray(rules)) {
+    try {
+      // 1. Upsert tất cả các rule trong danh sách mới
+      for (const r of rules) {
+        await supabase.from('sport_rules').upsert(
+          {
+            activity_type: r.activity_type,
+            display_name: r.display_name,
+            multiplier: Number(r.multiplier) || 1.0,
+            bonus_per_100m_elevation: Number(r.bonus_per_100m_elevation) || 0,
+            icon: r.icon || '🏅',
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'activity_type' }
+        );
+      }
+
+      // 2. Xóa các rule không còn trong danh sách (nếu admin xóa môn)
+      const currentCodes = rules.map((r) => r.activity_type);
+      const { data: existingData } = await supabase.from('sport_rules').select('activity_type');
+      if (Array.isArray(existingData)) {
+        for (const item of existingData) {
+          if (!currentCodes.includes(item.activity_type)) {
+            await supabase.from('sport_rules').delete().eq('activity_type', item.activity_type);
+          }
+        }
+      }
+
+      return await getServerSportRules();
+    } catch (e) {
+      console.error('Supabase save sport_rules error:', e);
+    }
+  }
+
+  ensureDataDir();
+  try {
+    fs.writeFileSync(RULES_FILE, JSON.stringify(rules, null, 2), 'utf-8');
+  } catch (e) {}
+
+  return rules;
 };
 
 /**

@@ -1,10 +1,25 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { SportRule, UserRole } from '@/types';
-import { ShieldCheck, ShieldAlert, Save, Sliders, Users, Dices, CheckCircle2, UserCheck, RefreshCw, Sparkles, Building, ChevronRight, Lock } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Save, Sliders, Users, Dices, CheckCircle2, UserCheck, RefreshCw, Sparkles, Building, ChevronRight, Lock, PlusCircle, Trash2, X, AlertCircle } from 'lucide-react';
+
+const PRESET_SPORTS = [
+  { code: 'TrailRun', name: 'Chạy Địa Hình (Trail Run)', icon: '🌲', mult: 1.2, elev: 0.5 },
+  { code: 'VirtualRide', name: 'Đạp Xe Virtual / Zwift', icon: '🚴', mult: 0.3, elev: 0.1 },
+  { code: 'Walk', name: 'Đi Bộ (Walk)', icon: '🚶', mult: 0.8, elev: 0.1 },
+  { code: 'Hike', name: 'Leo Núi (Hike)', icon: '🥾', mult: 1.0, elev: 0.5 },
+  { code: 'Swim', name: 'Bơi Lội (Swim)', icon: '🏊', mult: 4.0, elev: 0.0 },
+  { code: 'Badminton', name: 'Cầu Lông (Badminton)', icon: '🏸', mult: 1.0, elev: 0.0 },
+  { code: 'Tennis', name: 'Quần Vợt (Tennis)', icon: '🎾', mult: 1.0, elev: 0.0 },
+  { code: 'Soccer', name: 'Bóng Đá (Soccer)', icon: '⚽', mult: 1.0, elev: 0.0 },
+  { code: 'Yoga', name: 'Yoga / Thiền', icon: '🧘', mult: 0.5, elev: 0.0 },
+  { code: 'Workout', name: 'Tập Luyện (Workout)', icon: '💪', mult: 1.0, elev: 0.0 },
+  { code: 'WeightTraining', name: 'Gym / Thể Hình (Weights)', icon: '🏋️', mult: 1.0, elev: 0.0 },
+  { code: 'Rowing', name: 'Chèo Thuyền (Rowing)', icon: '🚣', mult: 2.0, elev: 0.0 },
+];
 
 export default function AdminPage() {
   const { rules, updateRules, profiles, teams, updateMemberRole, assignMemberTeam, randomTeamDraft, currentUser } = useApp();
@@ -14,6 +29,21 @@ export default function AdminPage() {
   // Rules tab state
   const [editedRules, setEditedRules] = useState<SportRule[]>(rules);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
+
+  // Thêm môn thể thao mới state
+  const [showAddSportModal, setShowAddSportModal] = useState(false);
+  const [newSportName, setNewSportName] = useState('');
+  const [newSportCode, setNewSportCode] = useState('');
+  const [newSportIcon, setNewSportIcon] = useState('🏃');
+  const [newSportMultiplier, setNewSportMultiplier] = useState('1.0');
+  const [newSportElevation, setNewSportElevation] = useState('0.0');
+
+  // Cập nhật editedRules khi rules từ cloud/context thay đổi
+  useEffect(() => {
+    if (rules && rules.length > 0) {
+      setEditedRules(rules);
+    }
+  }, [rules]);
 
   // Draft tab state
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(profiles.map((p) => p.id));
@@ -63,6 +93,59 @@ export default function AdminPage() {
     setTimeout(() => setSaveStatus(null), 4000);
   };
 
+  const handleAddSportRule = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSportCode.trim() || !newSportName.trim()) {
+      alert('Vui lòng điền tên môn và mã Strava!');
+      return;
+    }
+
+    const cleanCode = newSportCode.trim();
+    if (editedRules.some((r) => r.activity_type.toLowerCase() === cleanCode.toLowerCase())) {
+      alert(`Mã môn thể thao "${cleanCode}" đã tồn tại trên hệ thống! Vui lòng chọn hoặc nhập mã khác.`);
+      return;
+    }
+
+    const newRule: SportRule = {
+      id: `rule-${cleanCode.toLowerCase()}`,
+      activity_type: cleanCode,
+      display_name: newSportName.trim(),
+      multiplier: parseFloat(newSportMultiplier) || 1.0,
+      bonus_per_100m_elevation: parseFloat(newSportElevation) || 0.0,
+      icon: newSportIcon.trim() || '🏅',
+    };
+
+    const updated = [...editedRules, newRule];
+    setEditedRules(updated);
+    updateRules(updated);
+    setShowAddSportModal(false);
+    setNewSportName('');
+    setNewSportCode('');
+    setNewSportIcon('🏃');
+    setNewSportMultiplier('1.0');
+    setNewSportElevation('0.0');
+
+    setSaveStatus(`🎉 Đã thêm môn "${newRule.display_name}" thành công! Điểm các bài tập thuộc môn này đã được tính.`);
+    setTimeout(() => setSaveStatus(null), 4000);
+  };
+
+  const handleDeleteSportRule = (activityType: string, displayName: string) => {
+    if (!confirm(`Bạn có chắc chắn muốn xóa môn "${displayName}" (${activityType}) khỏi hệ thống?`)) return;
+    const updated = editedRules.filter((r) => r.activity_type !== activityType);
+    setEditedRules(updated);
+    updateRules(updated);
+    setSaveStatus(`🗑️ Đã xóa môn "${displayName}" khỏi bảng quy đổi điểm.`);
+    setTimeout(() => setSaveStatus(null), 4000);
+  };
+
+  const handleSelectPreset = (p: (typeof PRESET_SPORTS)[0]) => {
+    setNewSportCode(p.code);
+    setNewSportName(p.name);
+    setNewSportIcon(p.icon);
+    setNewSportMultiplier(String(p.mult));
+    setNewSportElevation(String(p.elev));
+  };
+
   const toggleSelectMember = (id: string) => {
     setSelectedMemberIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
   };
@@ -97,7 +180,7 @@ export default function AdminPage() {
             <span>CISCO ADMIN CONTROL CENTER</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white mt-1">QUẢN TRỊ QUY TẮC & ĐỘI NHÓM CISCO</h1>
-          <p className="text-sm text-slate-400 mt-1">Cấu hình điểm số, phân quyền thành viên và bốc thăm chia đội ngẫu nhiên.</p>
+          <p className="text-sm text-slate-400 mt-1">Cấu hình điểm số linh hoạt theo môn thể thao, phân quyền thành viên và bốc thăm chia đội.</p>
         </div>
 
         <span className="px-3.5 py-1.5 rounded-full bg-slate-900 text-[#00BCEB] border border-[#00BCEB]/30 text-xs font-bold">
@@ -116,7 +199,7 @@ export default function AdminPage() {
           }`}
         >
           <Sliders className="w-4 h-4" />
-          <span>Quy Tắc Điểm Số</span>
+          <span>Quy Tắc Điểm Số ({editedRules.length} Môn)</span>
         </button>
 
         <button
@@ -154,69 +237,230 @@ export default function AdminPage() {
             </div>
           )}
 
-          <div className="flex items-center justify-between">
-            <h2 className="font-extrabold text-lg text-white flex items-center gap-2">
-              <Sliders className="w-5 h-5 text-[#FC4C02]" />
-              <span>Hệ Số Quy Đổi Thể Thao (1 km = X Điểm)</span>
-            </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="font-extrabold text-lg text-white flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-[#FC4C02]" />
+                <span>Hệ Số Quy Đổi Thể Thao (1 km = X Điểm)</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">
+                Admin có thể thêm bất kỳ môn thể thao Strava nào mà không bị giới hạn cố định.
+              </p>
+            </div>
 
-            <button
-              type="submit"
-              className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#FC4C02] to-orange-500 hover:from-orange-500 hover:to-[#FC4C02] text-white font-extrabold text-sm shadow-lg shadow-[#FC4C02]/20 transition-all"
-            >
-              <Save className="w-4 h-4" />
-              <span>Lưu & Tự Động Tính Lại Điểm</span>
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                type="button"
+                onClick={() => setShowAddSportModal(true)}
+                className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-[#00BCEB] font-extrabold text-xs border border-[#00BCEB]/30 transition-all btn-interactive"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>+ Thêm Môn Thể Thao Mới</span>
+              </button>
+
+              <button
+                type="submit"
+                className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#FC4C02] to-orange-500 hover:from-orange-500 hover:to-[#FC4C02] text-white font-extrabold text-xs sm:text-sm shadow-lg shadow-[#FC4C02]/20 transition-all"
+              >
+                <Save className="w-4 h-4" />
+                <span>Lưu Điểm</span>
+              </button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {editedRules.map((rule) => (
               <div
                 key={rule.activity_type}
-                className="glass-card p-5 rounded-2xl border border-slate-800 space-y-4 hover:border-slate-700 transition-all"
+                className="glass-card p-5 rounded-2xl border border-slate-800 space-y-4 hover:border-slate-700 transition-all relative group"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <span className="text-2xl">{rule.icon}</span>
                     <div>
-                      <h3 className="font-bold text-base text-white">{rule.display_name}</h3>
-                      <p className="text-xs text-slate-400 font-mono">Code: {rule.activity_type}</p>
+                      <h3 className="font-bold text-sm text-white">{rule.display_name}</h3>
+                      <p className="text-[11px] text-slate-400 font-mono">Strava: {rule.activity_type}</p>
                     </div>
                   </div>
 
-                  <span className="px-2.5 py-1 rounded-full bg-slate-900 text-xs font-bold text-[#CCFF00]">
-                    {rule.multiplier}x multiplier
-                  </span>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="px-2.5 py-1 rounded-full bg-slate-900 text-xs font-bold text-[#CCFF00]">
+                      {rule.multiplier}x
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteSportRule(rule.activity_type, rule.display_name)}
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                      title={`Xóa môn ${rule.display_name}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 pt-2">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Hệ số 1 km (Điểm)</label>
+                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">Hệ số 1 km (Điểm)</label>
                     <input
                       type="number"
                       step="0.1"
                       min="0"
                       value={rule.multiplier}
                       onChange={(e) => handleMultiplierChange(rule.activity_type, e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold text-sm focus:outline-none focus:border-[#00BCEB]"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold text-xs focus:outline-none focus:border-[#00BCEB]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Thưởng / 100m Leo Dốc</label>
+                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">Thưởng / 100m Leo Dốc</label>
                     <input
                       type="number"
                       step="0.1"
                       min="0"
                       value={rule.bonus_per_100m_elevation}
                       onChange={(e) => handleElevationChange(rule.activity_type, e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold text-sm focus:outline-none focus:border-[#00BCEB]"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold text-xs focus:outline-none focus:border-[#00BCEB]"
                     />
                   </div>
                 </div>
               </div>
             ))}
           </div>
+
+          {/* Modal Thêm Môn Thể Thao Mới */}
+          {showAddSportModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-slate-950 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-6 shadow-2xl relative">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                  <div className="flex items-center space-x-2">
+                    <PlusCircle className="w-5 h-5 text-[#00BCEB]" />
+                    <h3 className="font-extrabold text-lg text-white">Thêm Môn Thể Thao Mới</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddSportModal(false)}
+                    className="w-8 h-8 rounded-full bg-slate-900 text-slate-400 hover:text-white flex items-center justify-center"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Gợi Ý Nhanh Môn Strava */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-300 uppercase">
+                    Chọn Nhanh Môn Thể Thao Strava Phổ Biến:
+                  </label>
+                  <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+                    {PRESET_SPORTS.map((p) => {
+                      const isSelected = newSportCode === p.code;
+                      return (
+                        <button
+                          key={p.code}
+                          type="button"
+                          onClick={() => handleSelectPreset(p)}
+                          className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1 transition-all ${
+                            isSelected
+                              ? 'bg-[#00BCEB] text-slate-950 font-bold'
+                              : 'bg-slate-900 border border-slate-800 text-slate-300 hover:border-slate-600'
+                          }`}
+                        >
+                          <span>{p.icon}</span>
+                          <span>{p.code}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-1">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="col-span-2">
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Tên Hiển Thị</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="VD: Cầu Lông, Leo Núi..."
+                        value={newSportName}
+                        onChange={(e) => setNewSportName(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-bold focus:outline-none focus:border-[#00BCEB]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Icon Emoji</label>
+                      <input
+                        type="text"
+                        required
+                        value={newSportIcon}
+                        onChange={(e) => setNewSportIcon(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-center text-lg focus:outline-none focus:border-[#00BCEB]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                      Mã Hoạt Động Strava (Activity Type Code)
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="VD: TrailRun, Badminton, Tennis, Swim..."
+                      value={newSportCode}
+                      onChange={(e) => setNewSportCode(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-mono font-bold focus:outline-none focus:border-[#00BCEB]"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Mã này cần trùng khớp với loại bài tập trả về từ Strava (VD: Run, Ride, Swim, Walk, Hike, Badminton, Tennis, VirtualRide, TrailRun...)
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Hệ Số 1 km = X Điểm</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        required
+                        value={newSportMultiplier}
+                        onChange={(e) => setNewSportMultiplier(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-bold focus:outline-none focus:border-[#00BCEB]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Thưởng / 100m Leo Dốc</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        required
+                        value={newSportElevation}
+                        onChange={(e) => setNewSportElevation(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-bold focus:outline-none focus:border-[#00BCEB]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 flex justify-end space-x-3 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddSportModal(false)}
+                    className="px-4 py-2 rounded-xl text-slate-400 text-xs font-semibold hover:bg-slate-900"
+                  >
+                    Hủy Bỏ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddSportRule}
+                    className="px-5 py-2 rounded-xl bg-[#00BCEB] hover:bg-[#00a3cc] text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-[#00BCEB]/20"
+                  >
+                    Lưu Môn Thể Thao Mới
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </form>
       )}
 

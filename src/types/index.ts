@@ -16,7 +16,7 @@ export interface Certificate {
 }
 
 export interface SportRule {
-  id: string;
+  id?: string;
   activity_type: string;
   display_name: string;
   multiplier: number;
@@ -82,7 +82,8 @@ export interface Challenge {
   id: string;
   title: string;
   description: string;
-  type: SportType;
+  type: string; // Tương thích ngược (ví dụ 'Run' hoặc 'All')
+  sport_types?: string[]; // Danh sách 1 hoặc nhiều môn thể thao áp dụng cho giải đấu này
   target_km: number;
   start_date: string;
   end_date: string;
