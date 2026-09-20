@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
-import { SportRule, UserRole } from '@/types';
-import { ShieldCheck, ShieldAlert, Save, Sliders, Users, Dices, CheckCircle2, UserCheck, RefreshCw, Sparkles, Building, ChevronRight, Lock, PlusCircle, Trash2, X, AlertCircle } from 'lucide-react';
+import { SportRule, UserRole, Profile } from '@/types';
+import { ShieldCheck, ShieldAlert, Save, Sliders, Users, Dices, CheckCircle2, UserCheck, RefreshCw, Sparkles, Building, ChevronRight, Lock, PlusCircle, Trash2, X, AlertCircle, Edit3, UserMinus } from 'lucide-react';
 
 const PRESET_SPORTS = [
   { code: 'TrailRun', name: 'Chạy Địa Hình (Trail Run)', icon: '🌲', mult: 1.2, elev: 0.5 },
@@ -22,7 +22,7 @@ const PRESET_SPORTS = [
 ];
 
 export default function AdminPage() {
-  const { rules, updateRules, profiles, teams, updateMemberRole, assignMemberTeam, randomTeamDraft, currentUser } = useApp();
+  const { rules, updateRules, profiles, teams, updateMemberRole, assignMemberTeam, updateMemberProfile, deleteMemberProfile, randomTeamDraft, currentUser } = useApp();
 
   const [activeTab, setActiveTab] = useState<'rules' | 'members' | 'draft'>('rules');
 
@@ -38,12 +38,66 @@ export default function AdminPage() {
   const [newSportMultiplier, setNewSportMultiplier] = useState('1.0');
   const [newSportElevation, setNewSportElevation] = useState('0.0');
 
+  // Quản lý thành viên state (Sửa / Xóa)
+  const [editingMember, setEditingMember] = useState<Profile | null>(null);
+  const [editFullName, setEditFullName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editDepartment, setEditDepartment] = useState('');
+  const [editRole, setEditRole] = useState<UserRole>('member');
+  const [editTeamId, setEditTeamId] = useState('');
+  const [editAvatarUrl, setEditAvatarUrl] = useState('');
+  const [memberActionStatus, setMemberActionStatus] = useState<string | null>(null);
+
   // Cập nhật editedRules khi rules từ cloud/context thay đổi
   useEffect(() => {
     if (rules && rules.length > 0) {
       setEditedRules(rules);
     }
   }, [rules]);
+
+  // Handlers Quản lý thành viên
+  const handleOpenEditMember = (p: Profile) => {
+    setEditingMember(p);
+    setEditFullName(p.full_name);
+    setEditEmail(p.email || '');
+    setEditDepartment(p.department || '');
+    setEditRole(p.role || 'member');
+    setEditTeamId(p.team_id || '');
+    setEditAvatarUrl(p.avatar_url || '');
+  };
+
+  const handleSaveMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMember || !editFullName.trim()) return;
+
+    await updateMemberProfile({
+      id: editingMember.id,
+      full_name: editFullName.trim(),
+      email: editEmail.trim() || undefined,
+      department: editDepartment.trim() || undefined,
+      role: editRole,
+      team_id: editTeamId || undefined,
+      avatar_url: editAvatarUrl.trim() || undefined,
+    });
+
+    setEditingMember(null);
+    setMemberActionStatus(`🎉 Đã cập nhật thông tin thành viên "${editFullName.trim()}" thành công!`);
+    setTimeout(() => setMemberActionStatus(null), 4000);
+  };
+
+  const handleDeleteMember = async (p: Profile) => {
+    if (
+      !confirm(
+        `⚠️ BẠN CÓ CHẮC CHẮN MUỐN XÓA THÀNH VIÊN:\n\n"${p.full_name}" (${p.email || p.username || p.id})?\n\nToàn bộ dữ liệu bài tập và liên kết của thành viên này sẽ được gỡ bỏ khỏi hệ thống.`
+      )
+    ) {
+      return;
+    }
+
+    await deleteMemberProfile(p.id);
+    setMemberActionStatus(`🗑️ Đã xóa thành viên "${p.full_name}" khỏi hệ thống thành công!`);
+    setTimeout(() => setMemberActionStatus(null), 4000);
+  };
 
   // Draft tab state
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(profiles.map((p) => p.id));
@@ -467,10 +521,28 @@ export default function AdminPage() {
       {/* TAB 2: QUẢN LÝ THÀNH VIÊN */}
       {activeTab === 'members' && (
         <div className="glass-panel rounded-3xl p-6 border border-slate-800 space-y-6">
-          <h2 className="font-extrabold text-lg text-white flex items-center gap-2">
-            <UserCheck className="w-5 h-5 text-[#00BCEB]" />
-            <span>Danh Sách Thành Viên & Phân Đội Cisco</span>
-          </h2>
+          {memberActionStatus && (
+            <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-sm font-semibold flex items-center space-x-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+              <span>{memberActionStatus}</span>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-extrabold text-lg text-white flex items-center gap-2">
+                <UserCheck className="w-5 h-5 text-[#00BCEB]" />
+                <span>Danh Sách Thành Viên & Phân Đội Cisco</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">
+                Admin có toàn quyền chỉnh sửa thông tin hoặc xóa thành viên khỏi hệ thống.
+              </p>
+            </div>
+
+            <span className="px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs font-bold text-[#CCFF00]">
+              Tổng: {profiles.length} thành viên
+            </span>
+          </div>
 
           <div className="divide-y divide-slate-800/60 overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -480,6 +552,7 @@ export default function AdminPage() {
                   <th className="py-3.5 px-4 font-semibold">Phòng Ban</th>
                   <th className="py-3.5 px-4 font-semibold">Vai Trò (Role)</th>
                   <th className="py-3.5 px-4 font-semibold">Đội Nhóm (Team)</th>
+                  <th className="py-3.5 px-4 font-semibold text-right">Thao Tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/50 text-sm">
@@ -487,15 +560,19 @@ export default function AdminPage() {
                   <tr key={p.id} className="hover:bg-slate-800/40 transition-colors">
                     <td className="py-4 px-4">
                       <div className="flex items-center space-x-3">
-                        <img src={p.avatar_url} alt={p.full_name} className="w-9 h-9 rounded-full object-cover border border-slate-700" />
+                        <img
+                          src={p.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
+                          alt={p.full_name}
+                          className="w-9 h-9 rounded-full object-cover border border-slate-700"
+                        />
                         <div>
                           <p className="font-bold text-white">{p.full_name}</p>
-                          <p className="text-xs text-slate-400">{p.email}</p>
+                          <p className="text-xs text-slate-400">{p.email || (p.strava_id ? `Strava ID: ${p.strava_id}` : 'Chưa có email')}</p>
                         </div>
                       </div>
                     </td>
 
-                    <td className="py-4 px-4 text-xs text-slate-300">{p.department}</td>
+                    <td className="py-4 px-4 text-xs text-slate-300">{p.department || '—'}</td>
 
                     <td className="py-4 px-4">
                       <select
@@ -524,11 +601,151 @@ export default function AdminPage() {
                         ))}
                       </select>
                     </td>
+
+                    <td className="py-4 px-4 text-right">
+                      <div className="flex items-center justify-end space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditMember(p)}
+                          className="p-2 rounded-xl bg-slate-800 hover:bg-[#00BCEB] text-slate-300 hover:text-slate-950 border border-slate-700 hover:border-[#00BCEB] transition-all flex items-center gap-1 text-xs font-bold"
+                          title={`Sửa thông tin ${p.full_name}`}
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Sửa</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteMember(p)}
+                          className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white border border-red-500/30 hover:border-red-500 transition-all flex items-center gap-1 text-xs font-bold"
+                          title={`Xóa thành viên ${p.full_name}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Xóa</span>
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+
+          {/* Modal Chỉnh Sửa Thông Tin Thành Viên */}
+          {editingMember && (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-slate-950 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-6 shadow-2xl relative">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                  <div className="flex items-center space-x-2">
+                    <Edit3 className="w-5 h-5 text-[#00BCEB]" />
+                    <h3 className="font-extrabold text-lg text-white">Chỉnh Sửa Thành Viên</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingMember(null)}
+                    className="w-8 h-8 rounded-full bg-slate-900 text-slate-400 hover:text-white flex items-center justify-center"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveMember} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Họ Và Tên</label>
+                    <input
+                      type="text"
+                      required
+                      value={editFullName}
+                      onChange={(e) => setEditFullName(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-bold focus:outline-none focus:border-[#00BCEB]"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Email</label>
+                      <input
+                        type="email"
+                        value={editEmail}
+                        onChange={(e) => setEditEmail(e.target.value)}
+                        placeholder="athlete@cisco.com"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-[#00BCEB]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Phòng Ban</label>
+                      <input
+                        type="text"
+                        value={editDepartment}
+                        onChange={(e) => setEditDepartment(e.target.value)}
+                        placeholder="VD: GSC, Software, Sales..."
+                        className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-[#00BCEB]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Vai Trò Hệ Thống</label>
+                      <select
+                        value={editRole}
+                        onChange={(e) => setEditRole(e.target.value as UserRole)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-bold focus:outline-none focus:border-[#00BCEB]"
+                      >
+                        <option value="member">🏃 Vận Động Viên (Default)</option>
+                        <option value="captain">👑 Trưởng Nhóm (Leader)</option>
+                        <option value="organizer">🎪 Ban Tổ Chức (BTC)</option>
+                        <option value="admin">⚡ Quản Trị Viên (Admin)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Đội Nhóm (Team)</label>
+                      <select
+                        value={editTeamId}
+                        onChange={(e) => setEditTeamId(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-bold focus:outline-none focus:border-[#00BCEB]"
+                      >
+                        <option value="">Chưa chọn team</option>
+                        {teams.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 uppercase mb-1">URL Ảnh Đại Diện (Avatar URL)</label>
+                    <input
+                      type="text"
+                      value={editAvatarUrl}
+                      onChange={(e) => setEditAvatarUrl(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-mono focus:outline-none focus:border-[#00BCEB]"
+                    />
+                  </div>
+
+                  <div className="pt-4 flex justify-end space-x-3 border-t border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setEditingMember(null)}
+                      className="px-4 py-2 rounded-xl text-slate-400 text-xs font-semibold hover:bg-slate-900"
+                    >
+                      Hủy Bỏ
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 rounded-xl bg-[#00BCEB] hover:bg-[#00a3cc] text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-[#00BCEB]/20"
+                    >
+                      Lưu Thay Đổi
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

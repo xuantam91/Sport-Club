@@ -30,6 +30,8 @@ interface AppContextType {
   leaveChallenge: (challengeId: string) => void;
   updateMemberRole: (userId: string, role: UserRole) => void;
   assignMemberTeam: (userId: string, teamId: string) => void;
+  updateMemberProfile: (profile: Partial<Profile> & { id: string }) => Promise<void>;
+  deleteMemberProfile: (userId: string) => Promise<void>;
   randomTeamDraft: (memberIds: string[], targetTeamIds: string[]) => void;
   completeOnboarding: (data: { fullName?: string; username: string; email: string; avatarUrl?: string; gender?: 'male' | 'female' | 'other'; teamId: string; emailNotifications: boolean }) => void;
   showOnboardingModal: boolean;
@@ -450,15 +452,100 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateMemberRole = (userId: string, role: UserRole) => {
-    setProfiles((prev) => prev.map((p) => (p.id === userId ? { ...p, role } : p)));
+    setProfiles((prev) =>
+      prev.map((p) => {
+        if (p.id === userId) {
+          const updated = { ...p, role };
+          fetch('/api/profiles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updated),
+          }).catch(() => {});
+          return updated;
+        }
+        return p;
+      })
+    );
     if (currentUser?.id === userId) {
-      setCurrentUser({ ...currentUser, role });
+      const updated = { ...currentUser, role };
+      setCurrentUser(updated);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cisco_sport_user', JSON.stringify(updated));
+      }
     }
   };
 
   const assignMemberTeam = (userId: string, teamId: string) => {
     const targetTeam = teams.find((t) => t.id === teamId);
-    setProfiles((prev) => prev.map((p) => (p.id === userId ? { ...p, team_id: teamId, team: targetTeam } : p)));
+    setProfiles((prev) =>
+      prev.map((p) => {
+        if (p.id === userId) {
+          const updated = { ...p, team_id: teamId || undefined, team: targetTeam };
+          fetch('/api/profiles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updated),
+          }).catch(() => {});
+          return updated;
+        }
+        return p;
+      })
+    );
+    if (currentUser?.id === userId) {
+      const updated = { ...currentUser, team_id: teamId || undefined, team: targetTeam };
+      setCurrentUser(updated);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cisco_sport_user', JSON.stringify(updated));
+      }
+    }
+  };
+
+  const updateMemberProfile = async (profileData: Partial<Profile> & { id: string }) => {
+    let updatedProfile: Profile | undefined;
+    setProfiles((prev) => {
+      const updated = prev.map((p) => {
+        if (p.id === profileData.id) {
+          updatedProfile = { ...p, ...profileData };
+          return updatedProfile;
+        }
+        return p;
+      });
+      return updated;
+    });
+
+    if (currentUser?.id === profileData.id && updatedProfile) {
+      setCurrentUser(updatedProfile);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cisco_sport_user', JSON.stringify(updatedProfile));
+      }
+    }
+
+    try {
+      await fetch('/api/profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData),
+      });
+    } catch (e) {
+      console.error('Lỗi cập nhật profile:', e);
+    }
+  };
+
+  const deleteMemberProfile = async (userId: string) => {
+    setProfiles((prev) => prev.filter((p) => p.id !== userId));
+    setActivities((prev) => prev.filter((a) => a.profile_id !== userId));
+
+    if (currentUser?.id === userId) {
+      logout();
+    }
+
+    try {
+      await fetch(`/api/profiles?id=${encodeURIComponent(userId)}`, {
+        method: 'DELETE',
+      });
+    } catch (e) {
+      console.error('Lỗi xóa profile:', e);
+    }
   };
 
   const randomTeamDraft = (memberIds: string[], targetTeamIds: string[]) => {
@@ -963,6 +1050,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         leaveChallenge,
         updateMemberRole,
         assignMemberTeam,
+        updateMemberProfile,
+        deleteMemberProfile,
         randomTeamDraft,
         completeOnboarding,
         showOnboardingModal,

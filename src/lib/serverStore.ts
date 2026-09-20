@@ -398,6 +398,35 @@ export const upsertServerProfile = async (profile: Profile): Promise<Profile[]> 
 };
 
 /**
+ * Xóa một Profile (VĐV) khỏi Cloud (Supabase) hoặc Local File
+ */
+export const deleteServerProfile = async (profileId: string): Promise<Profile[]> => {
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      // 1. Xóa các bài tập liên kết của user này nếu có
+      await supabase.from('activities').delete().eq('profile_id', profileId);
+      // 2. Xóa profile khỏi bảng profiles
+      const { error } = await supabase.from('profiles').delete().eq('id', profileId);
+      if (error) {
+        console.error('Supabase delete profile error:', error);
+      }
+      return await getServerProfiles();
+    } catch (e) {
+      console.error('Supabase delete profile error:', e);
+    }
+  }
+
+  ensureDataDir();
+  const profiles = await getServerProfiles();
+  const updatedList = profiles.filter((p) => p.id !== profileId);
+  try {
+    fs.writeFileSync(PROFILES_FILE, JSON.stringify(updatedList, null, 2), 'utf-8');
+  } catch (e) {}
+
+  return updatedList;
+};
+
+/**
  * Đọc tất cả Activities đã lưu trên Cloud (Supabase) hoặc Local File
  */
 export const getServerActivities = async (): Promise<Activity[]> => {
