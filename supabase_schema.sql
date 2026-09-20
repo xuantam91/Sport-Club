@@ -129,14 +129,8 @@ ALTER TABLE public.teams ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.activities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sport_rules ENABLE ROW LEVEL SECURITY;
 
--- Cho phép đọc công khai dữ liệu bảng xếp hạng
-CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "Public teams are viewable by everyone" ON public.teams FOR SELECT USING (true);
-CREATE POLICY "Public activities are viewable by everyone" ON public.activities FOR SELECT USING (true);
-CREATE POLICY "Public sport rules are viewable by everyone" ON public.sport_rules FOR SELECT USING (true);
-
--- Cho phép người dùng chỉnh sửa profile của chính mình
-CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (true);
-
--- Admin có quyền chỉnh sửa quy tắc tính điểm
-CREATE POLICY "Admins can update sport rules" ON public.sport_rules FOR ALL USING (true);
+-- Cho phép đọc và ghi dữ liệu cho ứng dụng web
+CREATE POLICY "Allow all for profiles" ON public.profiles FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for teams" ON public.teams FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for activities" ON public.activities FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for sport rules" ON public.sport_rules FOR ALL USING (true) WITH CHECK (true);
