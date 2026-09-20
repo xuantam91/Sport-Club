@@ -3,7 +3,7 @@ import { getServerProfiles, syncAthleteStravaActivitiesOnServer, getServerActivi
 
 export async function GET() {
   try {
-    const profiles = getServerProfiles();
+    const profiles = await getServerProfiles();
     let totalSynced = 0;
 
     for (const p of profiles) {
@@ -13,7 +13,7 @@ export async function GET() {
       }
     }
 
-    const allActivities = getServerActivities();
+    const allActivities = await getServerActivities();
     return NextResponse.json({
       success: true,
       message: `Đã đồng bộ bài tập cho ${profiles.length} VĐV`,

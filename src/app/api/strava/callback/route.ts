@@ -43,7 +43,7 @@ export async function GET(request: Request) {
       created_at: new Date().toISOString(),
     };
 
-    upsertServerProfile(newProfile);
+    await upsertServerProfile(newProfile);
 
     // Kéo ngay hoạt động Strava của VĐV này về Server
     if (accessToken) {

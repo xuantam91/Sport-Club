@@ -29,26 +29,27 @@ ON CONFLICT (activity_type) DO NOTHING;
 
 -- 2. BẢNG TEAMS (Đội nhóm linh hoạt)
 CREATE TABLE IF NOT EXISTS public.teams (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   name TEXT NOT NULL UNIQUE,
   code TEXT UNIQUE NOT NULL,
   avatar_url TEXT,
   description TEXT,
-  leader_id UUID,
+  leader_id TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 
 -- 3. BẢNG PROFILES (Hồ sơ thành viên)
 CREATE TABLE IF NOT EXISTS public.profiles (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   full_name TEXT NOT NULL,
-  username TEXT UNIQUE,
-  email TEXT UNIQUE,
+  username TEXT,
+  email TEXT,
   avatar_url TEXT,
+  gender TEXT DEFAULT 'male',
   department TEXT,
   role TEXT NOT NULL DEFAULT 'member', -- 'admin', 'organizer', 'captain', 'member'
-  team_id UUID REFERENCES public.teams(id) ON DELETE SET NULL,
+  team_id TEXT REFERENCES public.teams(id) ON DELETE SET NULL,
   strava_id BIGINT UNIQUE,
   strava_access_token TEXT,
   strava_refresh_token TEXT,
@@ -60,20 +61,15 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 );
 
 -- Đảm bảo bổ sung các cột nếu bảng đã tồn tại
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS username TEXT UNIQUE;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS username TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS gender TEXT DEFAULT 'male';
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email_notifications BOOLEAN DEFAULT true;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS certificates JSONB DEFAULT '[]'::jsonb;
 
--- Tạo liên kết foreign key leader_id cho bảng teams
-ALTER TABLE public.teams 
-  ADD CONSTRAINT fk_teams_leader 
-  FOREIGN KEY (leader_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
-
-
 -- 4. BẢNG ACTIVITIES (Nhật ký hoạt động Strava)
 CREATE TABLE IF NOT EXISTS public.activities (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  profile_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  profile_id TEXT NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   strava_activity_id BIGINT UNIQUE NOT NULL,
   name TEXT NOT NULL,
   type TEXT NOT NULL, -- Run, Ride, Walk, Hike, Swim...
