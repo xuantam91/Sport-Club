@@ -6,6 +6,7 @@ import { TimeFilter, SportType, IndividualLeaderboardEntry, TeamLeaderboardEntry
 import { Trophy, Flame, Crown, Medal, Zap, TrendingUp, Users, Sparkles, HeartPulse } from 'lucide-react';
 import Link from 'next/link';
 import confetti from 'canvas-confetti';
+import { LiveActivityToast } from '@/components/LiveActivityToast';
 
 function isActivityInTimeFilter(dateStr: string, filter: TimeFilter): boolean {
   if (filter === 'all') return true;
@@ -858,6 +859,9 @@ export default function LeaderboardPage() {
           </div>
         )}
       </div>
+
+      {/* Pop-up thông báo xoay tua 10 hoạt động gần nhất */}
+      <LiveActivityToast />
     </div>
   );
 }
