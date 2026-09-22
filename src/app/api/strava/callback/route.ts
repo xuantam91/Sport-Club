@@ -18,6 +18,8 @@ export async function GET(request: Request) {
     const tokenData = await exchangeStravaToken(code);
     const athlete = tokenData.athlete || {};
     const accessToken = tokenData.access_token || '';
+    const refreshToken = tokenData.refresh_token || '';
+    const expiresAt = tokenData.expires_at ? Number(tokenData.expires_at) : (tokenData.expires_in ? Math.floor(Date.now() / 1000) + Number(tokenData.expires_in) : undefined);
 
     const stravaId = athlete.id || '';
     const firstname = athlete.firstname || '';
@@ -31,7 +33,7 @@ export async function GET(request: Request) {
     const numStravaId = stravaId ? Number(stravaId) : undefined;
     const isStravaAdmin = numStravaId === 162869534 || String(stravaId) === '162869534';
 
-    // Tạo / cập nhật profile ngay trên Server Storage
+    // Tạo / cập nhật profile ngay trên Server Storage kèm Refresh Token
     const newProfile: Profile = {
       id: numStravaId ? `usr-strava-${numStravaId}` : `usr-${Date.now()}`,
       role: isStravaAdmin ? 'admin' : 'member',
@@ -42,6 +44,8 @@ export async function GET(request: Request) {
       gender: gender,
       strava_id: numStravaId,
       strava_access_token: accessToken || undefined,
+      strava_refresh_token: refreshToken || undefined,
+      strava_expires_at: expiresAt,
       created_at: new Date().toISOString(),
     };
 
@@ -64,6 +68,8 @@ export async function GET(request: Request) {
     profileUrl.searchParams.set('email', stravaEmail);
     profileUrl.searchParams.set('gender', gender);
     if (accessToken) profileUrl.searchParams.set('strava_token', accessToken);
+    if (refreshToken) profileUrl.searchParams.set('strava_refresh_token', refreshToken);
+    if (expiresAt) profileUrl.searchParams.set('strava_expires_at', String(expiresAt));
     if (avatar) profileUrl.searchParams.set('avatar', avatar);
 
     return NextResponse.redirect(profileUrl);

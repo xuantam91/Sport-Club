@@ -20,13 +20,48 @@ export default function ActivitiesPage() {
   const [actDurationMin, setActDurationMin] = useState('');
   const [actElevation, setActElevation] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState<{ type: 'success' | 'warning' | 'info'; message: string } | null>(null);
 
   const handleManualSync = async () => {
     setIsSyncing(true);
-    await refreshData();
-    setTimeout(() => {
+    setSyncFeedback(null);
+    try {
+      const res = await fetch('/api/strava/sync-all?force=true');
+      const data = await res.json();
+      await refreshData();
+
+      if (data.needsReauth && data.reauthNeededAthletes?.length > 0) {
+        const isCurrentAffected = currentUser && data.reauthNeededAthletes.includes(currentUser.full_name);
+        if (isCurrentAffected) {
+          setSyncFeedback({
+            type: 'warning',
+            message: 'Tài khoản Strava của bạn đã hết hạn phiên cũ (chưa lưu Refresh Token). Vui lòng nhấn "Kết Nối Strava" màu cam để kích hoạt tự động gia hạn vĩnh viễn!',
+          });
+        } else {
+          setSyncFeedback({
+            type: 'info',
+            message: `Đã đồng bộ xong! Lưu ý: Có VĐV (${data.reauthNeededAthletes.join(', ')}) cần kết nối lại Strava 1 lần để kích hoạt tự động gia hạn vĩnh viễn.`,
+          });
+        }
+      } else if (data.totalSynced > 0) {
+        setSyncFeedback({
+          type: 'success',
+          message: `🎉 Đã đồng bộ thành công ${data.totalSynced} hoạt động mới từ Strava!`,
+        });
+      } else {
+        setSyncFeedback({
+          type: 'info',
+          message: '✨ Dữ liệu đã mới nhất từ Strava, không có bài tập nào mới chưa ghi nhận.',
+        });
+      }
+    } catch (e: any) {
+      setSyncFeedback({
+        type: 'warning',
+        message: `Lỗi kết nối đồng bộ: ${e.message}`,
+      });
+    } finally {
       setIsSyncing(false);
-    }, 800);
+    }
   };
 
   const handleAddSubmit = (e: React.FormEvent) => {
@@ -241,6 +276,50 @@ export default function ActivitiesPage() {
           </button>
         </div>
       </div>
+
+      {/* Alert Thông Báo Kết Quả Đồng Bộ */}
+      {syncFeedback && (
+        <div
+          className={`p-4 rounded-2xl border text-sm flex items-center justify-between transition-all animate-fadeIn ${
+            syncFeedback.type === 'success'
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+              : syncFeedback.type === 'warning'
+              ? 'bg-amber-500/15 border-amber-500/40 text-amber-200'
+              : 'bg-sky-500/10 border-sky-500/30 text-sky-200'
+          }`}
+        >
+          <div className="flex items-center space-x-3">
+            <span className="text-lg">
+              {syncFeedback.type === 'success' ? '✅' : syncFeedback.type === 'warning' ? '⚠️' : 'ℹ️'}
+            </span>
+            <p className="font-medium">{syncFeedback.message}</p>
+          </div>
+          <button
+            onClick={() => setSyncFeedback(null)}
+            className="text-xs text-slate-400 hover:text-white px-2 py-1 rounded-lg hover:bg-slate-800"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Gợi ý cho VĐV kết nối Strava để bật tự động gia hạn vĩnh viễn */}
+      {currentUser && currentUser.strava_id && !currentUser.strava_refresh_token && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-[#FC4C02]/15 via-slate-900 to-slate-900 border border-[#FC4C02]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-start sm:items-center space-x-2 text-slate-200">
+            <span className="text-base flex-shrink-0">⚡</span>
+            <span>
+              <strong>Kích hoạt đồng bộ vĩnh viễn:</strong> Tài khoản của bạn được liên kết trước khi có cơ chế tự động gia hạn token. Nhấn <strong>"Kết Nối Strava"</strong> 1 lần duy nhất để hệ thống tự động đồng bộ hoạt động liên tục mà không bao giờ hết hạn.
+            </span>
+          </div>
+          <a
+            href="/api/strava/auth"
+            className="px-3.5 py-1.5 rounded-lg bg-[#FC4C02] text-white font-bold hover:bg-[#e04300] transition-colors whitespace-nowrap self-start sm:self-auto text-center"
+          >
+            Kích hoạt ngay →
+          </a>
+        </div>
+      )}
 
       {/* Bộ Lọc Môn Thể Thao & Thanh Tìm Kiếm */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">

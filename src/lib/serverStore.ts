@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { Profile, Activity, Team, Challenge, SportRule } from '@/types';
-import { fetchStravaActivities, calculatePoints, mapSportType } from '@/lib/strava';
+import { fetchStravaActivities, calculatePoints, mapSportType, refreshStravaToken } from '@/lib/strava';
 import { DEFAULT_SPORT_RULES } from '@/lib/demoData';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 
@@ -321,6 +321,12 @@ export const upsertServerProfile = async (profile: Profile): Promise<Profile[]> 
       if (profile.strava_access_token) {
         upsertData.strava_access_token = profile.strava_access_token;
       }
+      if (profile.strava_refresh_token) {
+        upsertData.strava_refresh_token = profile.strava_refresh_token;
+      }
+      if (profile.strava_expires_at) {
+        upsertData.strava_expires_at = profile.strava_expires_at;
+      }
       if (profile.department) {
         upsertData.department = profile.department;
       }
@@ -521,18 +527,100 @@ export const upsertServerActivities = async (newActs: Activity[]): Promise<Activ
 };
 
 /**
+ * Đảm bảo token Strava luôn còn hạn (tự động dùng refresh_token để cấp mới vĩnh viễn)
+ */
+export const ensureValidStravaToken = async (profile: Profile): Promise<string | null> => {
+  if (!profile.strava_access_token && !profile.strava_refresh_token) {
+    return null;
+  }
+
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  // Nếu token còn hạn ít nhất 5 phút nữa thì dùng tiếp
+  const isExpired = !profile.strava_access_token ||
+    (profile.strava_expires_at && profile.strava_expires_at <= nowSeconds + 300);
+
+  if (!isExpired && profile.strava_access_token) {
+    return profile.strava_access_token;
+  }
+
+  // Nếu token đã hết hạn nhưng có refresh_token -> Tự động gia hạn ngay
+  if (profile.strava_refresh_token) {
+    try {
+      console.log(`[Strava Auto-Refresh] Đang gia hạn token tự động cho VĐV ${profile.full_name} (ID Strava: ${profile.strava_id})...`);
+      const refreshed = await refreshStravaToken(profile.strava_refresh_token);
+      if (refreshed && refreshed.access_token) {
+        const newAccessToken = refreshed.access_token;
+        const newRefreshToken = refreshed.refresh_token || profile.strava_refresh_token;
+        const newExpiresAt = refreshed.expires_at || (nowSeconds + (refreshed.expires_in || 21600));
+
+        profile.strava_access_token = newAccessToken;
+        profile.strava_refresh_token = newRefreshToken;
+        profile.strava_expires_at = newExpiresAt;
+
+        // Lưu token mới vào Supabase
+        if (isSupabaseConfigured() && supabase) {
+          await supabase.from('profiles').update({
+            strava_access_token: newAccessToken,
+            strava_refresh_token: newRefreshToken,
+            strava_expires_at: newExpiresAt,
+            updated_at: new Date().toISOString(),
+          }).eq('id', profile.id);
+        }
+
+        // Cập nhật file cục bộ nếu có
+        ensureDataDir();
+        if (fs.existsSync(PROFILES_FILE)) {
+          try {
+            const raw = fs.readFileSync(PROFILES_FILE, 'utf-8');
+            const list: Profile[] = JSON.parse(raw);
+            const idx = list.findIndex((p) => p.id === profile.id);
+            if (idx >= 0) {
+              list[idx].strava_access_token = newAccessToken;
+              list[idx].strava_refresh_token = newRefreshToken;
+              list[idx].strava_expires_at = newExpiresAt;
+              fs.writeFileSync(PROFILES_FILE, JSON.stringify(list, null, 2), 'utf-8');
+            }
+          } catch (e) {}
+        }
+
+        console.log(`[Strava Auto-Refresh] Gia hạn token thành công cho VĐV ${profile.full_name}!`);
+        return newAccessToken;
+      }
+    } catch (err: any) {
+      console.error(`[Strava Auto-Refresh] Lỗi khi gia hạn token cho ${profile.full_name}:`, err.message);
+    }
+  }
+
+  return profile.strava_access_token || null;
+};
+
+/**
  * Tự động kết nối Strava API và kéo toàn bộ bài tập của VĐV về Server
  */
 export const syncAthleteStravaActivitiesOnServer = async (
   profile: Profile,
   accessToken?: string
-): Promise<Activity[]> => {
-  const token = accessToken || profile.strava_access_token;
-  if (!token) return [];
+): Promise<{ success: boolean; count: number; activities: Activity[]; error?: string; needsReauth?: boolean }> => {
+  let token: string | null | undefined = accessToken;
+  if (!token) {
+    token = await ensureValidStravaToken(profile);
+  }
+
+  if (!token) {
+    return {
+      success: false,
+      count: 0,
+      activities: [],
+      error: 'Tài khoản chưa có token Strava hoặc chưa cấp quyền.',
+      needsReauth: true,
+    };
+  }
 
   try {
     const stravaActs = await fetchStravaActivities(token);
-    if (!Array.isArray(stravaActs) || stravaActs.length === 0) return [];
+    if (!Array.isArray(stravaActs)) {
+      return { success: true, count: 0, activities: [] };
+    }
 
     const formattedActs: Activity[] = stravaActs.map((act: any) => {
       const sportCategory = mapSportType(act.type, act.sport_type);
@@ -561,9 +649,27 @@ export const syncAthleteStravaActivitiesOnServer = async (
       };
     });
 
-    return await upsertServerActivities(formattedActs);
-  } catch (e) {
-    console.error(`Lỗi sync Strava cho VĐV ${profile.full_name}:`, e);
-    return [];
+    const saved = await upsertServerActivities(formattedActs);
+    return {
+      success: true,
+      count: formattedActs.length,
+      activities: saved,
+    };
+  } catch (e: any) {
+    console.error(`Lỗi sync Strava cho VĐV ${profile.full_name}:`, e.message);
+    const isAuthError =
+      e.message &&
+      (e.message.includes('401') ||
+        e.message.includes('Authorization Error') ||
+        e.message.includes('invalid') ||
+        e.message.includes('Unauthorized'));
+
+    return {
+      success: false,
+      count: 0,
+      activities: [],
+      error: e.message,
+      needsReauth: isAuthError,
+    };
   }
 };

@@ -575,10 +575,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!activeUser) return;
     const userTokenKey = `cisco_strava_token_${activeUser.id}`;
     const token = givenToken || activeUser.strava_access_token || (typeof window !== 'undefined' ? localStorage.getItem(userTokenKey) || localStorage.getItem('cisco_strava_token') : null);
-    if (!token) return;
 
     try {
-      const res = await fetch(`/api/strava/user-activities?token=${encodeURIComponent(token)}`);
+      const url = activeUser.id
+        ? `/api/strava/user-activities?userId=${encodeURIComponent(activeUser.id)}${token ? `&token=${encodeURIComponent(token)}` : ''}`
+        : `/api/strava/user-activities?token=${encodeURIComponent(token || '')}`;
+      const res = await fetch(url);
       const data = await res.json();
 
       if (data.success && Array.isArray(data.activities) && data.activities.length > 0) {
@@ -789,6 +791,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const stravaGender = (params.get('gender') as 'male' | 'female' | 'other') || 'male';
         const stravaId = params.get('strava_id');
         const stravaToken = params.get('strava_token');
+        const stravaRefreshToken = params.get('strava_refresh_token');
+        const stravaExpiresAt = params.get('strava_expires_at');
 
         const numStravaId = stravaId ? Number(stravaId) : null;
         const isStravaAdmin = numStravaId === 162869534 || String(stravaId) === '162869534';
@@ -804,6 +808,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           gender: stravaGender,
           strava_id: numStravaId || undefined,
           strava_access_token: stravaToken || undefined,
+          strava_refresh_token: stravaRefreshToken || undefined,
+          strava_expires_at: stravaExpiresAt ? Number(stravaExpiresAt) : undefined,
           created_at: new Date().toISOString(),
         };
 
@@ -812,8 +818,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (stravaToken) {
           localStorage.setItem(`cisco_strava_token_${updatedUser.id}`, stravaToken);
           localStorage.setItem('cisco_strava_token', stravaToken);
-          syncStravaActivities(stravaToken, updatedUser);
         }
+        if (stravaRefreshToken) {
+          localStorage.setItem(`cisco_strava_refresh_token_${updatedUser.id}`, stravaRefreshToken);
+        }
+        syncStravaActivities(stravaToken || undefined, updatedUser);
         setShowOnboardingModal(true);
 
         // Đẩy lên Cloud Database và kiểm tra phản hồi
@@ -971,7 +980,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const refreshData = async () => {
     try {
-      const res = await fetch('/api/strava/sync-all');
+      const res = await fetch('/api/strava/sync-all?force=true');
       const data = await res.json();
       if (data.success && Array.isArray(data.activities)) {
         setActivities(data.activities);
@@ -1001,15 +1010,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (profData.success && Array.isArray(profData.profiles)) {
         setProfiles(profData.profiles);
         setCloudStatus('connected');
-      }
-      if (actData.success && Array.isArray(actData.activities)) {
-        setActivities(actData.activities);
-      }
-      if (teamData.success && Array.isArray(teamData.teams)) {
-        setTeams(teamData.teams);
-      }
-      if (chData.success && Array.isArray(chData.challenges)) {
-        setChallenges(chData.challenges);
+        if (actData.success && Array.isArray(actData.activities)) {
+          setActivities(actData.activities);
+        }
+        if (teamData.success && Array.isArray(teamData.teams)) {
+          setTeams(teamData.teams);
+        }
+        if (chData.success && Array.isArray(chData.challenges)) {
+          setChallenges(chData.challenges);
+        }
+
+        // Tự động kiểm tra đồng bộ ngầm với Strava sau khi nạp trang
+        fetch('/api/strava/sync-all')
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.success && Array.isArray(data.activities) && data.activities.length > 0) {
+              setActivities(data.activities);
+            }
+          })
+          .catch(() => {});
       }
     } catch (e) {
       console.error('Lỗi nạp lại server data trong refreshData:', e);

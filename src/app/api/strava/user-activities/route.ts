@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { fetchStravaActivities, calculatePoints } from '@/lib/strava';
 import { DEFAULT_SPORT_RULES } from '@/lib/demoData';
+import { getServerProfiles, ensureValidStravaToken } from '@/lib/serverStore';
+
+export const dynamic = 'force-dynamic';
 
 function mapSportType(type: string, sportType?: string): 'Run' | 'Ride' | 'Walk' | 'Swim' | 'Hike' {
   const raw = (sportType || type || '').toLowerCase();
@@ -14,17 +17,35 @@ function mapSportType(type: string, sportType?: string): 'Run' | 'Ride' | 'Walk'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const token = searchParams.get('token');
+  let token = searchParams.get('token');
+  const userId = searchParams.get('userId');
+  const stravaId = searchParams.get('stravaId');
+
+  // Nếu không có token trực tiếp hoặc token cũ, tìm profile để đảm bảo token hợp lệ
+  if ((!token || userId || stravaId) && (userId || stravaId)) {
+    const profiles = await getServerProfiles();
+    const profile = profiles.find((p) => (userId && p.id === userId) || (stravaId && String(p.strava_id) === stravaId));
+    if (profile) {
+      const validToken = await ensureValidStravaToken(profile);
+      if (validToken) {
+        token = validToken;
+      }
+    }
+  }
 
   if (!token) {
-    return NextResponse.json({ error: 'Missing Strava access token' }, { status: 400 });
+    return NextResponse.json({
+      success: false,
+      error: 'Thiếu Strava access token hoặc token đã hết hạn',
+      needsReauth: true,
+    }, { status: 401 });
   }
 
   try {
     const rawActivities = await fetchStravaActivities(token);
 
     if (!Array.isArray(rawActivities)) {
-      return NextResponse.json({ activities: [] });
+      return NextResponse.json({ success: true, count: 0, activities: [] });
     }
 
     const mappedActivities = rawActivities.map((act: any) => {
@@ -59,6 +80,12 @@ export async function GET(request: Request) {
     });
   } catch (err: any) {
     console.error('Error fetching Strava activities API:', err);
-    return NextResponse.json({ error: err.message || 'Lỗi kết nối Strava API' }, { status: 500 });
+    const isAuthError = err.message && (err.message.includes('401') || err.message.includes('Authorization Error') || err.message.includes('invalid'));
+    return NextResponse.json({
+      success: false,
+      error: err.message || 'Lỗi kết nối Strava API',
+      needsReauth: isAuthError,
+    }, { status: isAuthError ? 401 : 500 });
   }
 }
+

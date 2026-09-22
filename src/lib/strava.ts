@@ -65,7 +65,9 @@ export const refreshStravaToken = async (refreshToken: string) => {
   });
 
   if (!res.ok) {
-    throw new Error('Lỗi làm mới token Strava');
+    const errText = await res.text();
+    console.error('Strava refresh token failed:', res.status, errText);
+    throw new Error(`Lỗi làm mới token Strava (${res.status}): ${errText}`);
   }
 
   return res.json();
