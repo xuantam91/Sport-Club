@@ -39,7 +39,7 @@ export default function ActivitiesPage() {
           });
         } else {
           setSyncFeedback({
-            type: 'info',
+            type: 'warning',
             message: `Đã đồng bộ xong! Lưu ý: Có VĐV (${data.reauthNeededAthletes.join(', ')}) cần kết nối lại Strava 1 lần để kích hoạt tự động gia hạn vĩnh viễn.`,
           });
         }
@@ -124,7 +124,7 @@ export default function ActivitiesPage() {
     if (Math.abs(rounded) >= 10000) {
       return (rounded / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
     }
-    return rounded.toLocaleString('vi-VN');
+    return rounded.toLocaleString('vi-VN', { maximumFractionDigits: 1 });
   };
 
   // Helper định dạng ngày tương đối (Ví dụ: "10 phút trước", "Hôm nay 08:30")
@@ -183,23 +183,21 @@ export default function ActivitiesPage() {
       };
     });
 
-    // 2. Lọc theo từ khóa tìm kiếm (Tên VĐV hoặc Tên Team)
-    const searchedRows = rows.filter((r) => {
+    // Lọc theo từ khóa tìm kiếm (tên hoặc phòng ban)
+    const searched = rows.filter((r) => {
       if (selectedType !== 'All' && r.totalCount === 0) return false;
       if (!searchQuery.trim()) return true;
-      const query = searchQuery.toLowerCase();
-      const matchName = r.profile.full_name.toLowerCase().includes(query);
-      const matchTeam = (r.profile.team?.name || '').toLowerCase().includes(query);
-      return matchName || matchTeam;
+      const nameMatch = r.profile.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
+      const teamMatch = r.profile.team?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+      const deptMatch = r.profile.department?.toLowerCase().includes(searchQuery.toLowerCase());
+      return nameMatch || teamMatch || deptMatch;
     });
 
-    // 3. SẮP XẾP: Vận động viên có HOẠT ĐỘNG CẬP NHẬT GẦN NHẤT lên đầu tiên!
-    searchedRows.sort((a, b) => b.latestTimestamp - a.latestTimestamp);
+    // Sắp xếp VĐV có hoạt động mới nhất lên trên đầu
+    return searched.sort((a, b) => b.latestTimestamp - a.latestTimestamp);
+  }, [activities, profiles, selectedType, searchQuery]);
 
-    return searchedRows;
-  }, [profiles, activities, selectedType, searchQuery]);
-
-  // Hoạt động của VĐV đang chọn trong Modal Chi Tiết
+  // Hoạt động của VĐV đang được click xem chi tiết
   const selectedAthleteActivities = useMemo(() => {
     if (!selectedAthleteDetail) return [];
     return activities
@@ -280,23 +278,36 @@ export default function ActivitiesPage() {
       {/* Alert Thông Báo Kết Quả Đồng Bộ */}
       {syncFeedback && (
         <div
-          className={`p-4 rounded-2xl border text-sm flex items-center justify-between transition-all animate-fadeIn ${
+          className={`p-4 sm:p-5 rounded-2xl border text-sm flex items-start sm:items-center justify-between transition-all animate-fadeIn ${
             syncFeedback.type === 'success'
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+              ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-200 shadow-lg shadow-emerald-500/10'
               : syncFeedback.type === 'warning'
-              ? 'bg-amber-500/15 border-amber-500/40 text-amber-200'
-              : 'bg-sky-500/10 border-sky-500/30 text-sky-200'
+              ? 'bg-gradient-to-r from-orange-600/30 via-orange-500/25 to-amber-600/20 border-2 border-orange-500/70 text-orange-50 shadow-2xl shadow-orange-500/20 ring-1 ring-orange-500/40'
+              : 'bg-sky-500/15 border-sky-500/40 text-sky-200'
           }`}
         >
-          <div className="flex items-center space-x-3">
-            <span className="text-lg">
-              {syncFeedback.type === 'success' ? '✅' : syncFeedback.type === 'warning' ? '⚠️' : 'ℹ️'}
-            </span>
-            <p className="font-medium">{syncFeedback.message}</p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full pr-3">
+            <div className="flex items-start space-x-3">
+              <span className="text-2xl flex-shrink-0 mt-0.5 sm:mt-0">
+                {syncFeedback.type === 'success' ? '✅' : 'ℹ️'}
+              </span>
+              <p className={`font-semibold text-sm leading-relaxed ${syncFeedback.type === 'warning' ? 'text-orange-50' : ''}`}>
+                {syncFeedback.message}
+              </p>
+            </div>
+            {syncFeedback.type === 'warning' && (
+              <a
+                href="/api/strava/auth"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#FC4C02] hover:bg-[#e04300] text-white font-extrabold text-xs shadow-lg shadow-[#FC4C02]/40 transition-all self-start sm:self-auto whitespace-nowrap btn-interactive border border-orange-400/50"
+              >
+                <Zap className="w-3.5 h-3.5 fill-white" />
+                <span>Kết Nối Lại Strava Ngay</span>
+              </a>
+            )}
           </div>
           <button
             onClick={() => setSyncFeedback(null)}
-            className="text-xs text-slate-400 hover:text-white px-2 py-1 rounded-lg hover:bg-slate-800"
+            className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800/80 transition-colors"
           >
             ✕
           </button>
@@ -305,16 +316,16 @@ export default function ActivitiesPage() {
 
       {/* Gợi ý cho VĐV kết nối Strava để bật tự động gia hạn vĩnh viễn */}
       {currentUser && currentUser.strava_id && !currentUser.strava_refresh_token && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-[#FC4C02]/15 via-slate-900 to-slate-900 border border-[#FC4C02]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div className="flex items-start sm:items-center space-x-2 text-slate-200">
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-orange-600/25 via-orange-500/15 to-slate-900 border border-orange-500/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-lg shadow-orange-500/10">
+          <div className="flex items-start sm:items-center space-x-2 text-orange-100">
             <span className="text-base flex-shrink-0">⚡</span>
             <span>
-              <strong>Kích hoạt đồng bộ vĩnh viễn:</strong> Tài khoản của bạn được liên kết trước khi có cơ chế tự động gia hạn token. Nhấn <strong>"Kết Nối Strava"</strong> 1 lần duy nhất để hệ thống tự động đồng bộ hoạt động liên tục mà không bao giờ hết hạn.
+              <strong className="text-orange-300">Kích hoạt đồng bộ vĩnh viễn:</strong> Tài khoản của bạn được liên kết trước khi có cơ chế tự động gia hạn token. Nhấn <strong className="text-white">"Kết Nối Lại Strava"</strong> 1 lần duy nhất để hệ thống tự động đồng bộ hoạt động liên tục mà không bao giờ hết hạn.
             </span>
           </div>
           <a
             href="/api/strava/auth"
-            className="px-3.5 py-1.5 rounded-lg bg-[#FC4C02] text-white font-bold hover:bg-[#e04300] transition-colors whitespace-nowrap self-start sm:self-auto text-center"
+            className="px-3.5 py-1.5 rounded-lg bg-[#FC4C02] text-white font-bold hover:bg-[#e04300] transition-colors whitespace-nowrap self-start sm:self-auto text-center shadow-md shadow-[#FC4C02]/30"
           >
             Kích hoạt ngay →
           </a>
